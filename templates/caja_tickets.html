@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Caja - Tickets{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+  <h2>💰 Panel de Caja</h2>
+
+  <!-- Estado de enlace -->
+  <div class="enlace-section">
+    {% if codigo_actual %}
+      <div class="enlace-activo">
+        <div class="enlace-info">
+          <span class="enlace-icon">🔗</span>
+          <div>
+            <p class="enlace-label">Enlazado a Cocina</p>
+            <p class="codigo-display">{{ codigo_actual }}</p>
+          </div>
+        </div>
+        <button onclick="desenlazarCocina()" class="btn-danger-sm">Desvincular</button>
+      </div>
+    {% else %}
+      <div class="enlace-inactivo">
+        <div class="enlace-form">
+          <span class="enlace-icon">⚠️</span>
+          <div>
+            <p class="enlace-label">No estás enlazado a ninguna cocina</p>
+            <p class="enlace-hint">Ingresa el código de 6 caracteres que te dio la cocina</p>
+          </div>
+        </div>
+        <div class="codigo-input-group">
+          <input type="text" id="codigoCocina" placeholder="Ej: ABC123" maxlength="6" class="codigo-input">
+          <button onclick="enlazarCocina()" class="btn-success">Enlazar</button>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Órdenes servidas -->
+  {% if codigo_actual %}
+    <div class="orders-section">
+      <h3>📄 Tickets - Órdenes Servidas</h3>
+      <div class="orders-grid" id="ordersContainer">
+        {% if ordenes %}
+          {% for orden in ordenes %}
+            <div class="order-card" data-order-id="{{ orden.id }}">
+              <div class="order-header">
+                <span class="order-number">Orden #{{ orden.id }}</span>
+                <span class="order-mesa">🪑 {{ orden.mesa }}</span>
+              </div>
+              <div class="order-body">
+                <p>Creada: {{ orden.created_at }}</p>
+                <div class="order-items" id="items-{{ orden.id }}">
+                  <p class="loading-text">Cargando items...</p>
+                </div>
+              </div>
+              <div class="order-actions">
+                <button onclick="cerrarOrden({{ orden.id }})" class="btn-success">💰 Cerrar Orden</button>
+                <button onclick="descargarTicket({{ orden.id }})" class="btn-secondary">🖨️ Imprimir TXT</button>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="empty-state">No hay órdenes servidas pendientes de pago</p>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <p class="empty-state">Enlázate a una cocina para ver órdenes</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function enlazarCocina() {
+    const codigo = document.getElementById('codigoCocina').value.trim().toUpperCase();
+    if (codigo.length !== 6) {
+        alert('El código debe tener 6 caracteres');
+        return;
+    }
+    fetch('/caja/enlazar-cocina', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({codigo: codigo})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert('Enlazado exitosamente');
+            location.reload();
+        }
+    });
+}
+
+function desenlazarCocina() {
+    if (!confirm('¿Deseas desvincularte de la cocina?')) return;
+    fetch('/caja/desenlazar-cocina', {method: 'POST'})
+        .then(r => r.json())
+        .then(() => location.reload());
+}
+
+function cargarItems(orderId) {
+    fetch(`/caja/orden/${orderId}`)
+        .then(r => r.json())
+        .then(items => {
+            const container = document.getElementById(`items-${orderId}`);
+            if (items.length === 0) {
+                container.innerHTML = '<p>Sin items</p>';
+                return;
+            }
+            let html = '<ul class="items-list">';
+            let total = 0;
+            items.forEach(item => {
+                const subtotal = item.qty * item.unit_price;
+                html += `<li><strong>${item.qty}x ${item.producto}</strong> - $${subtotal.toFixed(2)}</li>`;
+                total += subtotal;
+            });
+            html += `<li><strong>Total: $${total.toFixed(2)}</strong></li>`;
+            html += '</ul>';
+            container.innerHTML = html;
+        });
+}
+
+function cerrarOrden(orderId) {
+    if (!confirm('¿Cerrar orden y confirmar pago?')) return;
+    fetch(`/caja/cerrar/${orderId}`, {method: 'POST'})
+        .then(r => r.json())
+        .then(() => {
+            alert('Orden cerrada');
+            location.reload();
+        });
+}
+
+function descargarTicket(orderId) {
+    window.open(`/caja/ticket/${orderId}.txt`, '_blank');
+}
+
+// Cargar items al inicio
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.order-card').forEach(card => {
+        const orderId = card.dataset.orderId;
+        cargarItems(orderId);
+    });
+});
+</script>
+{% endblock %}

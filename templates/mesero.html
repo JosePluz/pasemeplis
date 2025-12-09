@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Mesero - Taquería Web Lite{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h2>🍽️ Panel de Mesero</h2>
+    
+    <!-- Sección de Enlace con Cocina -->
+    <div class="enlace-section">
+        {% if codigo_actual %}
+        <div class="enlace-activo">
+            <div class="enlace-info">
+                <span class="enlace-icon">🔗</span>
+                <div>
+                    <p class="enlace-label">Enlazado a Cocina</p>
+                    <p class="codigo-display">{{ codigo_actual }}</p>
+                </div>
+            </div>
+            <button onclick="desenlazarCocina()" class="btn-danger-sm">Desenlazar</button>
+        </div>
+        {% else %}
+        <div class="enlace-inactivo">
+            <div class="enlace-form">
+                <span class="enlace-icon">⚠️</span>
+                <div>
+                    <p class="enlace-label">No estás enlazado a ninguna cocina</p>
+                    <p class="enlace-hint">Ingresa el código de 6 caracteres que te dio la cocina</p>
+                </div>
+            </div>
+            <div class="codigo-input-group">
+                <input type="text" id="codigoCocina" placeholder="Ej: ABC123" maxlength="6" class="codigo-input">
+                <button onclick="enlazarCocina()" class="btn-success">Enlazar</button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Acciones -->
+    {% if codigo_actual %}
+    <div class="stats-mesero">
+        <div class="stat-mesero">
+            <span class="stat-mesero-numero">{{ orders|selectattr('status', 'equalto', 'borrador')|list|length }}</span>
+            <span class="stat-mesero-label">Borradores</span>
+        </div>
+        <div class="stat-mesero">
+            <span class="stat-mesero-numero">{{ orders|selectattr('status', 'equalto', 'pendiente')|list|length }}</span>
+            <span class="stat-mesero-label">En Cocina</span>
+        </div>
+        <div class="stat-mesero">
+            <span class="stat-mesero-numero">{{ orders|selectattr('status', 'equalto', 'servida')|list|length }}</span>
+            <span class="stat-mesero-label">Servidas</span>
+        </div>
+    </div>
+    
+    <div class="action-bar">
+        <button onclick="crearNuevaOrden()" class="btn-primary-lg">➕ Nueva Orden</button>
+    </div>
+    {% endif %}
+    
+    <!-- Órdenes -->
+    <div class="orders-section">
+        <h3>📋 Mis Órdenes Recientes</h3>
+        
+        {% if orders %}
+        <div class="orders-grid">
+            {% for order in orders %}
+            <div class="order-card-mesero" data-status="{{ order.status }}">
+                <div class="order-header">
+                    <span class="order-number">Orden #{{ order.id }}</span>
+                    <span class="order-status status-{{ order.status }}">{{ order.status }}</span>
+                </div>
+                <div class="order-body">
+                    <p><strong>Items:</strong> {{ order.items_count }}</p>
+                    <p><strong>Creada:</strong> {{ order.created_at[:16] }}</p>
+                </div>
+                {% if order.status == 'borrador' %}
+                <div class="order-actions">
+                    <button onclick="agregarItem({{ order.id }})" class="btn-secondary">➕ Agregar Item</button>
+                    <button onclick="enviarOrden({{ order.id }})" class="btn-success">📤 Enviar a Cocina</button>
+                    <button onclick="cancelarOrden({{ order.id }})" class="btn-danger-mini">🗑️</button>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>🔭 No tienes órdenes aún</p>
+            {% if codigo_actual %}
+            <p>Crea una nueva orden para comenzar</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para Agregar Items -->
+<div id="modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close" onclick="cerrarModal()">&times;</span>
+        <h3>🌮 Agregar Item a la Orden</h3>
+        <form id="itemForm">
+            <input type="hidden" id="orderId">
+            
+            <div class="form-group">
+                <label for="producto">Producto</label>
+                <select id="producto" required>
+                    <option value="">Selecciona un producto...</option>
+                    <option value="1">Taco al Pastor - $12.00</option>
+                    <option value="2">Taco de Asada - $13.00</option>
+                    <option value="3">Taco de Chorizo - $12.00</option>
+                    <option value="4">Refresco - $15.00</option>
+                    <option value="5">Agua de Sabor - $12.00</option>
+                    <option value="6">Extra Limón - $3.00</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="cantidad">Cantidad</label>
+                <input type="number" id="cantidad" min="1" max="50" value="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="notas">Notas especiales (opcional)</label>
+                <textarea id="notas" rows="2" placeholder="Ej: Sin cebolla, extra salsa..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn-primary">✅ Agregar a la Orden</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function enlazarCocina() {
+    const codigo = document.getElementById('codigoCocina').value.trim().toUpperCase();
+    
+    if (codigo.length !== 6) {
+        showToast('El código debe tener 6 caracteres', 'error');
+        return;
+    }
+    
+    fetch('/mesero/enlazar-cocina', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({codigo: codigo})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            showToast(data.error, 'error');
+        } else {
+            showToast('Enlazado exitosamente a cocina: ' + data.codigo, 'success');
+            setTimeout(() => location.reload(), 1000);
+        }
+    })
+    .catch(err => showToast('Error al enlazar con cocina', 'error'));
+}
+
+function desenlazarCocina() {
+    if (!confirm('¿Deseas desenlazarte de la cocina actual?')) return;
+    
+    fetch('/mesero/desenlazar-cocina', {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(() => location.reload())
+    .catch(err => alert('❌ Error al desenlazar'));
+}
+
+function crearNuevaOrden() {
+    fetch('/mesero/crear-orden', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            showToast(data.error, 'error');
+        } else if (data.order_id) {
+            showToast('Orden #' + data.order_id + ' creada', 'success');
+            setTimeout(() => location.reload(), 800);
+        }
+    })
+    .catch(err => showToast('Error al crear orden', 'error'));
+}
+
+function agregarItem(orderId) {
+    document.getElementById('orderId').value = orderId;
+    document.getElementById('modal').style.display = 'flex';
+}
+
+function cerrarModal() {
+    document.getElementById('modal').style.display = 'none';
+    document.getElementById('itemForm').reset();
+}
+
+document.getElementById('itemForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const orderId = document.getElementById('orderId').value;
+    const data = {
+        order_id: parseInt(orderId),
+        product_id: parseInt(document.getElementById('producto').value),
+        qty: parseInt(document.getElementById('cantidad').value),
+        notes: document.getElementById('notas').value
+    };
+    
+    fetch('/mesero/agregar-item', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.error) {
+            showToast(result.error, 'error');
+        } else {
+            showToast('Item agregado correctamente', 'success');
+            cerrarModal();
+            setTimeout(() => location.reload(), 800);
+        }
+    })
+    .catch(err => showToast('Error al agregar item', 'error'));
+});
+
+function enviarOrden(orderId) {
+    if (!confirm('¿Enviar orden a cocina?')) return;
+    
+    fetch(`/mesero/enviar-orden/${orderId}`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(() => {
+        showToast('Orden #' + orderId + ' enviada a cocina', 'success');
+        setTimeout(() => location.reload(), 800);
+    })
+    .catch(err => showToast('Error al enviar orden', 'error'));
+}
+
+function cancelarOrden(orderId) {
+    if (!confirm('¿CANCELAR y ELIMINAR la orden #' + orderId + '? Esta acción no se puede deshacer.')) return;
+    
+    fetch(`/mesero/cancelar-orden/${orderId}`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            showToast(data.error, 'error');
+        } else {
+            showToast('Orden #' + orderId + ' cancelada', 'warning');
+            setTimeout(() => location.reload(), 800);
+        }
+    })
+    .catch(err => showToast('Error al cancelar orden', 'error'));
+}
+
+// Permitir Enter en el input de código
+document.getElementById('codigoCocina')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        enlazarCocina();
+    }
+});
+</script>
+{% endblock %}

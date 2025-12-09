@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4">Cocina - Ordenes Pendientes</h1>
+
+    <div id="cocina-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for orden in ordenes %}
+            <div id="orden-{{ orden.id }}" class="bg-yellow-100 p-4 rounded-lg shadow-md">
+                <h3 class="font-bold text-lg">Mesa: {{ orden.table.name }} (Folio: #{{ orden.id }})</h3>
+                <ul class="list-disc list-inside mt-2">
+                    {% for item in orden.items %}
+                        <li>{{ item.qty }}x {{ item.product.name }}</li>
+                    {% endfor %}
+                </ul>
+                <button onclick="marcarServido({{ orden.id }})" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                    Marcar como Servido
+                </button>
+            </div>
+        {% else %}
+            <p>No hay órdenes pendientes.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- FIX: Elemento de audio para reproducir la notificación sonora -->
+<!--<audio id="notification-sound" src="{{ url_for('static', filename='audio/notification.mp3') }}" preload="auto"></audio>
+<!- Suponiendo que el archivo de audio se colocará en static/audio/notification.mp3 -->
+
+<script src="{{ url_for('static', filename='notifications.js') }}"></script>
+<script>
+function marcarServido(orderId) {
+    fetch(`/cocina/marcar_servido/${orderId}`, { method: 'POST' })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Orden marcada como servida.', 'success');
+            document.getElementById(`orden-${orderId}`).remove();
+        } else {
+            showToast('Error al actualizar la orden.', 'error');
+        }
+    });
+}
+
+// FIX: Lógica para reproducir sonido cuando llega una nueva orden.
+// Esto requeriría websockets para ser en tiempo real, pero para el fix
+// simulamos la reproducción del sonido al cargar la página si hay órdenes.
+document.addEventListener('DOMContentLoaded', function() {
+    const grid = document.getElementById('cocina-grid');
+    if (grid && grid.children.length > 0) {
+        const soundButton = document.querySelector('.sound-toggle-button'); // Suponiendo que hay un botón con esta clase
+        if (soundButton && !soundButton.classList.contains('muted')) {
+            const sound = document.getElementById('notification-sound');
+            // FIX: Manejo de la promesa de play() para evitar errores en consola.
+            if(sound) {
+                const playPromise = sound.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("La reproducción automática fue bloqueada por el navegador. Se requiere interacción del usuario.");
+                    });
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

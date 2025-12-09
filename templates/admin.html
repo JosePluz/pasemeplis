@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-bold mb-4">Panel de Administración</h1>
+
+    <!-- Pestañas -->
+    <div class="mb-4 border-b border-gray-200">
+        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="myTab" data-tabs-toggle="#myTabContent" role="tablist">
+            <li class="mr-2" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg" id="users-tab" data-tabs-target="#users" type="button" role="tab">Usuarios</button></li>
+            <li class="mr-2" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg" id="products-tab" data-tabs-target="#products" type="button" role="tab">Productos</button></li>
+            <li role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg" id="tables-tab" data-tabs-target="#tables" type="button" role="tab">Mesas</button></li>
+        </ul>
+    </div>
+
+    <!-- Contenido de las pestañas -->
+    <div id="myTabContent">
+        <!-- Pestaña Usuarios -->
+        <div class="hidden p-4 rounded-lg bg-gray-50" id="users" role="tabpanel">
+            <h2 class="text-xl font-bold">Usuarios</h2>
+            <table class="min-w-full bg-white mt-2">
+                <thead><tr><th class="py-2">ID</th><th>Username</th><th>Rol</th><th>Acciones</th></tr></thead>
+                <tbody>
+                {% for user in users %}
+                    <tr class="border-b">
+                        <td class="py-2 text-center">{{ user.id }}</td>
+                        <td class="py-2 text-center">{{ user.username }}</td>
+                        <td class="py-2 text-center">{{ user.role }}</td>
+                        <td class="py-2 text-center">
+                            <!-- FIX: Se añade el handler onclick para editar -->
+                            <button onclick="openEditModal('users', {{ user.id }})" class="text-blue-500 hover:underline">Editar</button>
+                            <!-- FIX: Se añade el handler onclick para eliminar -->
+                            <button onclick="deleteEntity('users', {{ user.id }})" class="text-red-500 hover:underline ml-2">Eliminar</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Pestaña Productos -->
+        <div class="hidden p-4 rounded-lg bg-gray-50" id="products" role="tabpanel">
+             <h2 class="text-xl font-bold">Productos</h2>
+            <table class="min-w-full bg-white mt-2">
+                <thead><tr><th class="py-2">ID</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+                <tbody>
+                {% for product in products %}
+                    <tr class="border-b">
+                        <td class="py-2 text-center">{{ product.id }}</td>
+                        <td class="py-2 text-center">{{ product.name }}</td>
+                        <td class="py-2 text-center">{{ product.category }}</td>
+                        <td class="py-2 text-center">${{ "%.2f"|format(product.price) }}</td>
+                        <td class="py-2 text-center">{{ product.stock if product.stock is not none else 'N/A' }}</td>
+                        <td class="py-2 text-center">
+                            <button onclick="openEditModal('products', {{ product.id }})" class="text-blue-500 hover:underline">Editar</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Pestaña Mesas -->
+        <div class="hidden p-4 rounded-lg bg-gray-50" id="tables" role="tabpanel">
+            <h2 class="text-xl font-bold">Mesas</h2>
+            <table class="min-w-full bg-white mt-2">
+                <thead><tr><th class="py-2">ID</th><th>Nombre</th><th>Acciones</th></tr></thead>
+                <tbody>
+                {% for table in tables %}
+                    <tr class="border-b">
+                        <td class="py-2 text-center">{{ table.id }}</td>
+                        <td class="py-2 text-center">{{ table.name }}</td>
+                        <td class="py-2 text-center">
+                            <button onclick="openEditModal('tables', {{ table.id }})" class="text-blue-500 hover:underline">Editar</button>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edición Genérico -->
+<div id="editModal" class="fixed z-10 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Editar</h3>
+        <div class="mt-2">
+            <form id="editForm">
+                <input type="hidden" id="edit-entity-type" name="entity">
+                <input type="hidden" id="edit-entity-id" name="id">
+                <div id="edit-form-fields"></div>
+            </form>
+        </div>
+      </div>
+      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <button type="button" onclick="submitEditForm()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700">Guardar</button>
+        <button type="button" onclick="closeEditModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="{{ url_for('static', filename='notifications.js') }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+
+# ---------- ADMIN API ----------
+@app.route('/admin/api/<entity_type>/<int:entity_id>')
+@login_required
+@role_required('admin')
+def admin_get_entity(entity_type, entity_id):
+    db = get_db()
+    
+    if entity_type == 'users':
+        row = db.execute('SELECT * FROM users WHERE id = ?', (entity_id,)).fetchone()
+    elif entity_type == 'products':
+        row = db.execute('SELECT * FROM products WHERE id = ?', (entity_id,)).fetchone()
+    elif entity_type == 'tables':
+        row = db.execute('SELECT * FROM tables WHERE id = ?', (entity_id,)).fetchone()
+    else:
+        return jsonify({'error': 'Tipo no válido'}), 400
+    
+    if not row:
+        return jsonify({'error': 'No encontrado'}), 404
+    
+    return jsonify(dict(row))
+
+@app.route('/admin/api/<entity_type>/<int:entity_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_update_entity(entity_type, entity_id):
+    db = get_db()
+    data = request.get_json()
+    
+    try:
+        if entity_type == 'users':
+            db.execute('UPDATE users SET username = ?, role = ? WHERE id = ?',
+                      (data['username'], data['role'], entity_id))
+        elif entity_type == 'products':
+            db.execute('UPDATE products SET name = ?, category = ?, price = ?, stock = ? WHERE id = ?',
+                      (data['name'], data['category'], data['price'], data['stock'], entity_id))
+        elif entity_type == 'tables':
+            db.execute('UPDATE tables SET name = ? WHERE id = ?',
+                      (data['name'], entity_id))
+        else:
+            return jsonify({'error': 'Tipo no válido'}), 400
+        
+        db.commit()
+        return jsonify({'success': True, 'message': 'Actualizado correctamente'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/<entity_type>/delete/<int:entity_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def admin_delete_entity(entity_type, entity_id):
+    db = get_db()
+    
+    try:
+        if entity_type == 'users':
+            # No permitir eliminar al único admin
+            if entity_id == 1:
+                return jsonify({'error': 'No se puede eliminar al administrador principal'}), 400
+            db.execute('DELETE FROM users WHERE id = ?', (entity_id,))
+        elif entity_type == 'products':
+            db.execute('DELETE FROM products WHERE id = ?', (entity_id,))
+        elif entity_type == 'tables':
+            db.execute('DELETE FROM tables WHERE id = ?', (entity_id,))
+        else:
+            return jsonify({'error': 'Tipo no válido'}), 400
+        
+        db.commit()
+        return jsonify({'success': True, 'message': 'Eliminado correctamente'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+{% endblock %}

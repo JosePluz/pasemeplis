@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Caja - Taquería Web Lite{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h2>Panel de Caja</h2>
+    
+    <div class="refresh-info">
+        <p>🔄 Auto-actualización cada 3 segundos</p>
+    </div>
+    
+    <div id="ordenes-servidas" class="orders-section">
+        <h3>Órdenes Servidas - Pendientes de Pago</h3>
+        
+        <div class="orders-grid" id="ordersContainer">
+            {% if orders %}
+                {% for order in orders %}
+                <div class="order-card" data-order-id="{{ order.id }}">
+                    <div class="order-header">
+                        <span class="order-number">Orden #{{ order.id }}</span>
+                        <span class="order-mesero">Mesero: {{ order.mesero_name }}</span>
+                    </div>
+                    <div class="order-body">
+                        <p>Creada: {{ order.created_at }}</p>
+                        <div class="order-items" id="items-{{ order.id }}">
+                            <p>Cargando items...</p>
+                        </div>
+                    </div>
+                    <div class="order-actions">
+                        <button onclick="cerrarOrden({{ order.id }})" class="btn-primary">💰 Cerrar Orden</button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty-state">No hay órdenes servidas pendientes de pago</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function cargarItems(orderId) {
+    fetch(`/caja/orden/${orderId}`)
+    .then(r => r.json())
+    .then(items => {
+        const container = document.getElementById(`items-${orderId}`);
+        if (items.length === 0) {
+            container.innerHTML = '<p>Sin items</p>';
+            return;
+        }
+        
+        let html = '<ul class="items-list">';
+        items.forEach(item => {
+            html += `<li><strong>${item.cantidad}x ${item.producto}</strong>`;
+            if (item.notas) html += ` - <em>${item.notas}</em>`;
+            html += '</li>';
+        });
+        html += '</ul>';
+        container.innerHTML = html;
+    })
+    .catch(err => console.error('Error cargando items:', err));
+}
+
+function cerrarOrden(orderId) {
+    if (!confirm('¿Cerrar orden y confirmar pago?')) return;
+    
+    fetch(`/caja/cerrar/${orderId}`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(() => location.reload())
+    .catch(err => alert('Error al cerrar orden'));
+}
+
+// Cargar items de todas las órdenes al inicio
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.order-card').forEach(card => {
+        const orderId = card.dataset.orderId;
+        cargarItems(orderId);
+    });
+});
+
+// Auto-refresh cada 3 segundos
+setInterval(() => {
+    location.reload();
+}, 3000);
+</script>
+{% endblock %}

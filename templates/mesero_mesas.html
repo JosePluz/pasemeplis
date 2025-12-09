@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Mesero - Seleccionar Mesa{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+  <h2>🍽️ Panel de Mesero</h2>
+
+  <!-- Estado de enlace -->
+  <div class="enlace-section">
+    {% if codigo_actual %}
+      <div class="enlace-activo">
+        <div class="enlace-info">
+          <span class="enlace-icon">🔗</span>
+          <div>
+            <p class="enlace-label">Enlazado a Cocina</p>
+            <p class="codigo-display">{{ codigo_actual }}</p>
+          </div>
+        </div>
+        <button onclick="desenlazarCocina()" class="btn-danger-sm">Desenlazar</button>
+      </div>
+    {% else %}
+      <div class="enlace-inactivo">
+        <div class="enlace-form">
+          <span class="enlace-icon">⚠️</span>
+          <div>
+            <p class="enlace-label">No estás enlazado a ninguna cocina</p>
+            <p class="enlace-hint">Ingresa el código de 6 caracteres que te dio la cocina</p>
+          </div>
+        </div>
+        <div class="codigo-input-group">
+          <input type="text" id="codigoCocina" placeholder="Ej: ABC123" maxlength="6" class="codigo-input">
+          <button onclick="enlazarCocina()" class="btn-success">Enlazar</button>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Grilla de mesas -->
+  {% if codigo_actual %}
+    <div class="mesas-grid">
+      <h3>Selecciona una Mesa</h3>
+      <div class="grid">
+        {% for mesa in mesas %}
+          <div class="mesa-card" onclick="abrirMesa({{ mesa.id }})">
+            <div class="mesa-icon">🪑</div>
+            <div class="mesa-name">{{ mesa.name }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <p class="empty-state">Enlázate a una cocina para ver las mesas</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function enlazarCocina() {
+    const codigo = document.getElementById('codigoCocina').value.trim().toUpperCase();
+    if (codigo.length !== 6) {
+        alert('El código debe tener 6 caracteres');
+        return;
+    }
+    fetch('/mesero/enlazar-cocina', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({codigo: codigo})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+        } else {
+            alert('Enlazado exitosamente');
+            location.reload();
+        }
+    });
+}
+
+function desenlazarCocina() {
+    if (!confirm('¿Deseas desenlazarte de la cocina?')) return;
+    fetch('/mesero/desenlazar-cocina', {method: 'POST'})
+    .then(r => r.json())
+    .then(() => location.reload());
+}
+
+function abrirMesa(mesaId) {
+    fetch(`/mesero/mesa/${mesaId}/orden`, {method: 'POST'})
+    .then(r => r.json())
+    .then(data => {
+        if (data.order_id) {
+            window.location.href = `/mesero/orden/${data.order_id}`;
+        } else {
+            alert('Error al crear orden');
+        }
+    });
+}
+</script>
+{% endblock %}

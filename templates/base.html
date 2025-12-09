@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Taquería Pro{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>🌮 Taquería Pro</h1>
+    <div class="user-info">
+      <span class="user-badge">
+        {{ session.username }} <span class="role-tag">{{ session.role }}</span>
+      </span>
+      <a href="{{ url_for('logout') }}" class="btn-logout">Salir</a>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='notifications.js') }}"></>
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

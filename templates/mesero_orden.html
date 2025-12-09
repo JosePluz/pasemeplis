@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Orden - Menú{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+  <h2>🌮 Orden para <span id="mesaName">Mesa</span></h2>
+  <p>Orden #<strong>{{ order_id }}</strong></p>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-button active" onclick="mostrarCategoria('tacos')">🌮 Tacos</button>
+    <button class="tab-button" onclick="mostrarCategoria('bebidas')">🥤 Bebidas</button>
+    <button class="tab-button" onclick="mostrarCategoria('extras')">➕ Extras</button>
+  </div>
+
+  <!-- Listado de productos -->
+  <div id="productosContainer">
+    {% for categoria in ['tacos', 'bebidas', 'extras'] %}
+      <div class="categoria-section" id="cat-{{ categoria }}">
+        <h3>{{ categoria|capitalize }}</h3>
+        {% for p in productos if p.category == categoria %}
+          <div class="producto-card" data-id="{{ p.id }}" data-name="{{ p.name }}" data-category="{{ p.category }}" data-price="{{ p.price }}">
+            <div class="producto-info">
+              <span class="producto-name">{{ p.name }}</span>
+              <span class="producto-price">${{ p.price }}</span>
+            </div>
+            <div class="producto-controls">
+              <input type="number" class="qty-input" min="0" max="50" value="0" data-id="{{ p.id }}">
+              <input type="text" class="notes-input" placeholder="Notas" data-id="{{ p.id }}">
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Resumen -->
+  <div class="resumen-box">
+    <h3>Resumen</h3>
+    <ul id="resumenList"></ul>
+    <button onclick="guardarOrden()" class="btn-primary-lg">💾 Guardar y Enviar a Cocina</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const orderId = {{ order_id }};
+const maxTacos = 30;
+const maxBebidas = 15;
+
+function mostrarCategoria(cat) {
+  document.querySelectorAll('.categoria-section').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+  document.getElementById('cat-' + cat).style.display = 'block';
+  event.target.classList.add('active');
+}
+
+function actualizarResumen() {
+  const resumen = document.getElementById('resumenList');
+  resumen.innerHTML = '';
+  let totalTacos = 0;
+  let totalBebidas = 0;
+
+  document.querySelectorAll('.qty-input').forEach(input => {
+    const qty = parseInt(input.value) || 0;
+    if (qty > 0) {
+      const card = input.closest('.producto-card');
+      const name = card.dataset.name;
+      const price = parseFloat(card.dataset.price);
+      const subtotal = qty * price;
+      const notes = card.querySelector('.notes-input').value;
+      const li = document.createElement('li');
+      li.textContent = `${qty}x ${name} ${notes ? '(' + notes + ')' : ''} - $${subtotal.toFixed(2)}`;
+      resumen.appendChild(li);
+
+      if (card.dataset.category === 'tacos') totalTacos += qty;
+      if (card.dataset.category === 'bebidas') totalBebidas += qty;
+    }
+  });
+
+  if (totalTacos > maxTacos) {
+    alert('Máximo 30 tacos por mesa');
+    return false;
+  }
+  if (totalBebidas > maxBebidas) {
+    alert('Máximo 15 bebidas por mesa');
+    return false;
+  }
+  return true;
+}
+
+function guardarOrden() {
+  if (!actualizarResumen()) return;
+
+  const items = [];
+  document.querySelectorAll('.producto-card').forEach(card => {
+    const qty = parseInt(card.querySelector('.qty-input').value) || 0;
+    if (qty > 0) {
+      items.push({
+        order_id: orderId,
+        product_id: card.dataset.id,
+        qty: qty,
+        notes: card.querySelector('.notes-input').value
+      });
+    }
+  });
+
+  if (items.length === 0) {
+    alert('No has agregado nada');
+    return;
+  }
+
+  Promise.all(items.map(item =>
+    fetch('/mesero/agregar-item', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(item)
+    })
+  )).then(() => {
+    return fetch(`/mesero/enviar-orden/${orderId}`, {method: 'POST'});
+  }).then(() => {
+    alert('Orden enviada a cocina');
+    window.location.href = '/mesero';
+  });
+}
+
+// Inicializar
+document.querySelector('.tab-button').click();
+</script>
+{% endblock %}
