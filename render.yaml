@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt && python init_db.py
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --worker-class gthread --timeout 120 --access-logfile - --error-logfile -
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --worker-class gthread --timeout 120 --access-logfile - --error-logfile -
     envVars:
       - key: FLASK_ENV
         value: production
@@ -13,4 +13,4 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: PYTHONUNBUFFERED
-        value: true
+        value: "true"
