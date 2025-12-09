@@ -1,42 +1,90 @@
 {% extends "base.html" %}
 
-{% block title %}Registro - Taquería Web Lite{% endblock %}
+{% block title %}Registro - Taquería Pro{% endblock %}
 
 {% block content %}
 <div class="auth-container">
     <div class="auth-box">
-        <h2>Crear Cuenta</h2>
-        
+        <div class="text-center" style="margin-bottom: 2rem;">
+            <i class="fas fa-user-plus" style="font-size: 3rem; color: #e74c3c; margin-bottom: 1rem;"></i>
+            <h2>Crear Cuenta</h2>
+            <p style="color: #95a5a6; margin-top: 0.5rem;">Únete a Taquería Pro</p>
+        </div>
+
         {% if error %}
-        <div class="error-message">{{ error }}</div>
+        <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ error }}
+        </div>
         {% endif %}
-        
+
+        {% if success %}
+        <div class="alert alert-success" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-check-circle"></i>
+            {{ success }}
+        </div>
+        {% endif %}
+
         <form method="POST" action="{{ url_for('register') }}">
             <div class="form-group">
-                <label for="username">Usuario</label>
-                <input type="text" id="username" name="username" required autofocus>
+                <label for="username">
+                    <i class="fas fa-user"></i> Usuario
+                </label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    placeholder="tu_usuario"
+                    required 
+                    autofocus
+                >
             </div>
-            
+
             <div class="form-group">
-                <label for="password">Contraseña</label>
-                <input type="password" id="password" name="password" required>
+                <label for="password">
+                    <i class="fas fa-lock"></i> Contraseña
+                </label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="••••••••"
+                    required
+                >
             </div>
-            
+
             <div class="form-group">
-                <label for="role">Rol</label>
+                <label for="role">
+                    <i class="fas fa-briefcase"></i> Rol
+                </label>
                 <select id="role" name="role" required>
-                    <option value="">Selecciona un rol...</option>
-                    <option value="mesero">Mesero</option>
-                    <option value="cocina">Cocina</option>
-                    <option value="caja">Caja</option>
+                    <option value="">Selecciona tu rol...</option>
+                    <option value="mesero">👨‍💼 Mesero</option>
+                    <option value="cocina">👨‍🍳 Cocina</option>
+                    <option value="caja">💰 Caja</option>
                 </select>
             </div>
-            
-            <button type="submit" class="btn-primary">Registrarse</button>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <i class="fas fa-user-check"></i> Registrarse
+            </button>
         </form>
-        
-        <div class="auth-footer">
-            <p>¿Ya tienes cuenta? <a href="{{ url_for('login') }}">Inicia sesión</a></p>
+
+        <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #ecf0f1; padding-top: 1.5rem;">
+            <p style="color: #95a5a6; margin: 0;">
+                ¿Ya tienes cuenta? 
+                <a href="{{ url_for('login') }}" style="color: #e74c3c; font-weight: 600;">Inicia sesión aquí</a>
+            </p>
+        </div>
+
+        <div class="demo-info">
+            <i class="fas fa-lightbulb" style="color: #f39c12; margin-right: 0.5rem;"></i>
+            <strong>Roles disponibles:</strong>
+            <ul style="margin: 0.75rem 0 0 0; padding-left: 1.5rem; font-size: 0.9rem;">
+                <li><strong>Mesero:</strong> Crea órdenes y gestiona mesas</li>
+                <li><strong>Cocina:</strong> Recibe y prepara órdenes</li>
+                <li><strong>Caja:</strong> Cierra órdenes y procesa pagos</li>
+            </ul>
         </div>
     </div>
 </div>
