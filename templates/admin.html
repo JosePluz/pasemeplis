@@ -185,14 +185,14 @@
 </div>
 
 <!-- MODAL EDITAR -->
-<div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-    <div class="card" style="width: 90%; max-width: 500px;">
+<div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div class="card" style="width: 90%; max-width: 500px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h3 id="modalTitle" style="margin: 0;">Editar</h3>
             <button onclick="closeEditModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #95a5a6;">✕</button>
         </div>
 
-        <form id="editForm" onsubmit="submitEditForm(event)">
+        <form id="editForm" onsubmit="submitEditForm(e)">
             <input type="hidden" id="entityType">
             <input type="hidden" id="entityId">
             <div id="formFields"></div>
@@ -294,7 +294,8 @@ function openEditModal(entityType, entityId) {
             }
             
             document.getElementById('editModal').style.display = 'flex';
-        });
+        })
+        .catch(err => showToast('Error: ' + err, 'error'));
 }
 
 function closeEditModal() {
@@ -339,7 +340,8 @@ function submitEditForm(e) {
         } else {
             showToast(result.error || 'Error', 'error');
         }
-    });
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
 }
 </script>
 {% endblock %}
