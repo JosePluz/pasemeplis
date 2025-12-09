@@ -1,91 +1,169 @@
 {% extends "base.html" %}
 
-{% block title %}Panel Caja - Taquería Web Lite{% endblock %}
+{% block title %}Panel Caja - Taquería Pro{% endblock %}
 
 {% block content %}
 <div class="dashboard">
-    <h2>Panel de Caja</h2>
-    
-    <div class="refresh-info">
-        <p>🔄 Auto-actualización cada 3 segundos</p>
-    </div>
-    
-    <div id="ordenes-servidas" class="orders-section">
-        <h3>Órdenes Servidas - Pendientes de Pago</h3>
-        
-        <div class="orders-grid" id="ordersContainer">
-            {% if orders %}
-                {% for order in orders %}
-                <div class="order-card" data-order-id="{{ order.id }}">
-                    <div class="order-header">
-                        <span class="order-number">Orden #{{ order.id }}</span>
-                        <span class="order-mesero">Mesero: {{ order.mesero_name }}</span>
+    <h2>
+        <i class="fas fa-cash-register"></i> Panel de Caja
+    </h2>
+
+    <!-- Sección de Enlace con Cocina -->
+    <div class="card" style="margin-bottom: 2rem;">
+        {% if codigo_actual %}
+            <div style="background: #d4edda; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #27ae60;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <p style="color: #155724; margin: 0; font-weight: 600;">
+                            <i class="fas fa-link"></i> Enlazado a Cocina
+                        </p>
+                        <p style="font-size: 1.5rem; font-weight: 900; color: #27ae60; margin: 0.5rem 0 0 0; font-family: 'Courier New', monospace;">
+                            {{ codigo_actual }}
+                        </p>
                     </div>
-                    <div class="order-body">
-                        <p>Creada: {{ order.created_at }}</p>
-                        <div class="order-items" id="items-{{ order.id }}">
-                            <p>Cargando items...</p>
-                        </div>
-                    </div>
-                    <div class="order-actions">
-                        <button onclick="cerrarOrden({{ order.id }})" class="btn-primary">💰 Cerrar Orden</button>
-                    </div>
+                    <button onclick="desenlazarCajaCocina()" class="btn btn-danger">
+                        <i class="fas fa-unlink"></i> Desenlazar
+                    </button>
                 </div>
-                {% endfor %}
+            </div>
+        {% else %}
+            <div style="background: #fff3cd; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #f39c12;">
+                <p style="color: #856404; margin: 0 0 1rem 0; font-weight: 600;">
+                    <i class="fas fa-exclamation-triangle"></i> No enlazado a cocina
+                </p>
+                <p style="color: #856404; margin: 0 0 1rem 0; font-size: 0.95rem;">
+                    Ingresa el código de 6 caracteres para ver órdenes servidas
+                </p>
+                <div style="display: flex; gap: 0.75rem;">
+                    <input 
+                        type="text" 
+                        id="codigoCocina" 
+                        placeholder="Ej: ABC123" 
+                        maxlength="6"
+                        class="form-group" 
+                        style="flex: 1; margin: 0; text-transform: uppercase;"
+                        onkeypress="if(event.key==='Enter') enlazarCajaCocina()"
+                    >
+                    <button onclick="enlazarCajaCocina()" class="btn btn-success">
+                        <i class="fas fa-link"></i> Enlazar
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Órdenes Servidas -->
+    {% if codigo_actual %}
+        <div>
+            <h3 style="color: #2c3e50; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-receipt"></i>
+                Órdenes Servidas - Pendientes de Pago
+                <span class="badge" style="background: #e74c3c; color: white; margin-left: auto;">
+                    {{ ordenes|length }}
+                </span>
+            </h3>
+
+            {% if ordenes %}
+                <div class="grid">
+                    {% for orden in ordenes %}
+                        <div class="card" style="border-top: 4px solid #27ae60;">
+                            <!-- Header -->
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #ecf0f1;">
+                                <div>
+                                    <p style="font-weight: 900; font-size: 1.5rem; color: #27ae60; margin: 0;">
+                                        #{{ orden.id }}
+                                    </p>
+                                    <p style="color: #95a5a6; margin: 0.25rem 0 0 0; font-size: 0.85rem;">
+                                        <i class="fas fa-clock"></i> {{ orden.created_at[:16] }}
+                                    </p>
+                                </div>
+                                <span style="background: #27ae60; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">
+                                    ✓ SERVIDA
+                                </span>
+                            </div>
+
+                            <!-- Info -->
+                            <p style="color: #2c3e50; margin: 0 0 0.5rem 0; font-size: 0.9rem;">
+                                <i class="fas fa-user"></i>
+                                <strong>Mesero:</strong> {{ orden.mesero or 'Sin asignar' }}
+                            </p>
+
+                            <!-- Items -->
+                            <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; max-height: 250px; overflow-y: auto;">
+                                <p style="color: #2c3e50; font-weight: 600; margin: 0 0 0.75rem 0; font-size: 0.9rem;">
+                                    <i class="fas fa-list"></i> Detalles:
+                                </p>
+                                <ul id="items-{{ orden.id }}" style="list-style: none; padding: 0; margin: 0;">
+                                    <li style="color: #95a5a6; font-style: italic; padding: 0.5rem;">
+                                        Cargando items...
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Total -->
+                            {% if orden.total %}
+                                <div style="padding: 1rem; background: linear-gradient(135deg, #27ae60, #229954); color: white; border-radius: 6px; margin-bottom: 1rem; text-align: center;">
+                                    <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">Total a Pagar</p>
+                                    <p style="font-size: 1.75rem; font-weight: 900; margin: 0;">
+                                        ${{ "%.2f"|format(orden.total) }}
+                                    </p>
+                                </div>
+                            {% endif %}
+
+                            <!-- Botón Cerrar -->
+                            <button onclick="cerrarOrden({{ orden.id }})" class="btn btn-success btn-block" style="width: 100%;">
+                                <i class="fas fa-credit-card"></i> Cerrar Orden & Confirmar Pago
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Auto-refresh info -->
+                <div style="text-align: center; margin-top: 2rem; padding: 1rem; background: #d1ecf1; border-radius: 6px; color: #0c5460;">
+                    <i class="fas fa-sync-alt"></i> La página se actualiza automáticamente cada 3 segundos
+                </div>
             {% else %}
-                <p class="empty-state">No hay órdenes servidas pendientes de pago</p>
+                <div style="text-align: center; padding: 4rem 2rem; background: linear-gradient(135deg, #f8f9fa, #ecf0f1); border-radius: 6px; border: 2px dashed #bdc3c7;">
+                    <i class="fas fa-inbox" style="font-size: 4rem; color: #bdc3c7; margin-bottom: 1rem;"></i>
+                    <p style="color: #2c3e50; margin: 0; font-weight: 700; font-size: 1.1rem;">
+                        ✓ Sin órdenes pendientes de pago
+                    </p>
+                    <p style="color: #95a5a6; margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+                        Todas las órdenes fueron cerradas
+                    </p>
+                </div>
             {% endif %}
         </div>
-    </div>
+    {% else %}
+        <div style="text-align: center; padding: 3rem 2rem; background: #f8f9fa; border-radius: 6px;">
+            <i class="fas fa-lock" style="font-size: 3rem; color: #bdc3c7; margin-bottom: 1rem;"></i>
+            <p style="color: #95a5a6; margin: 0; font-weight: 600;">Enlázate a una cocina para ver órdenes</p>
+        </div>
+    {% endif %}
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-function cargarItems(orderId) {
-    fetch(`/caja/orden/${orderId}`)
-    .then(r => r.json())
-    .then(items => {
-        const container = document.getElementById(`items-${orderId}`);
-        if (items.length === 0) {
-            container.innerHTML = '<p>Sin items</p>';
-            return;
-        }
-        
-        let html = '<ul class="items-list">';
-        items.forEach(item => {
-            html += `<li><strong>${item.cantidad}x ${item.producto}</strong>`;
-            if (item.notas) html += ` - <em>${item.notas}</em>`;
-            html += '</li>';
-        });
-        html += '</ul>';
-        container.innerHTML = html;
-    })
-    .catch(err => console.error('Error cargando items:', err));
-}
-
-function cerrarOrden(orderId) {
-    if (!confirm('¿Cerrar orden y confirmar pago?')) return;
-    
-    fetch(`/caja/cerrar/${orderId}`, {
-        method: 'POST'
-    })
-    .then(r => r.json())
-    .then(() => location.reload())
-    .catch(err => alert('Error al cerrar orden'));
-}
-
-// Cargar items de todas las órdenes al inicio
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.order-card').forEach(card => {
-        const orderId = card.dataset.orderId;
-        cargarItems(orderId);
-    });
-});
-
 // Auto-refresh cada 3 segundos
 setInterval(() => {
-    location.reload();
+    document.querySelectorAll('[id^="items-"]').forEach(el => {
+        const orderId = el.id.split('-')[1];
+        if (orderId) {
+            cargarItems(orderId);
+        }
+    });
 }, 3000);
+
+// Cargar al abrir
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[id^="items-"]').forEach(el => {
+        const orderId = el.id.split('-')[1];
+        if (orderId) {
+            cargarItems(orderId);
+        }
+    });
+});
 </script>
 {% endblock %}
