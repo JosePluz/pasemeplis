@@ -1,179 +1,345 @@
 {% extends "base.html" %}
 
+{% block title %}Panel Admin - Taquería Pro{% endblock %}
+
 {% block content %}
-<div class="container mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-4">Panel de Administración</h1>
+<div class="dashboard">
+    <h2>
+        <i class="fas fa-cog"></i> Panel de Administración
+    </h2>
 
-    <!-- Pestañas -->
-    <div class="mb-4 border-b border-gray-200">
-        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="myTab" data-tabs-toggle="#myTabContent" role="tablist">
-            <li class="mr-2" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg" id="users-tab" data-tabs-target="#users" type="button" role="tab">Usuarios</button></li>
-            <li class="mr-2" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg" id="products-tab" data-tabs-target="#products" type="button" role="tab">Productos</button></li>
-            <li role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg" id="tables-tab" data-tabs-target="#tables" type="button" role="tab">Mesas</button></li>
-        </ul>
+    <!-- Tabs -->
+    <div style="display: flex; gap: 0; border-bottom: 2px solid #ecf0f1; margin-bottom: 2rem; flex-wrap: wrap;">
+        <button class="tab-btn active" onclick="mostrarTab('usuarios')" style="padding: 1rem 1.5rem; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; color: #95a5a6; transition: all 0.3s;">
+            <i class="fas fa-users"></i> Usuarios
+        </button>
+        <button class="tab-btn" onclick="mostrarTab('productos')" style="padding: 1rem 1.5rem; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; color: #95a5a6; transition: all 0.3s;">
+            <i class="fas fa-box"></i> Productos
+        </button>
+        <button class="tab-btn" onclick="mostrarTab('mesas')" style="padding: 1rem 1.5rem; border: none; background: none; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; color: #95a5a6; transition: all 0.3s;">
+            <i class="fas fa-chair"></i> Mesas
+        </button>
     </div>
 
-    <!-- Contenido de las pestañas -->
-    <div id="myTabContent">
-        <!-- Pestaña Usuarios -->
-        <div class="hidden p-4 rounded-lg bg-gray-50" id="users" role="tabpanel">
-            <h2 class="text-xl font-bold">Usuarios</h2>
-            <table class="min-w-full bg-white mt-2">
-                <thead><tr><th class="py-2">ID</th><th>Username</th><th>Rol</th><th>Acciones</th></tr></thead>
+    <!-- TAB: USUARIOS -->
+    <div id="tab-usuarios" class="tab-content">
+        <h3 style="color: #2c3e50; margin-bottom: 1.5rem;">
+            <i class="fas fa-users"></i> Gestión de Usuarios
+        </h3>
+        
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Rol</th>
+                        <th>Creado</th>
+                        <th>Último Acceso</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
                 <tbody>
-                {% for user in users %}
-                    <tr class="border-b">
-                        <td class="py-2 text-center">{{ user.id }}</td>
-                        <td class="py-2 text-center">{{ user.username }}</td>
-                        <td class="py-2 text-center">{{ user.role }}</td>
-                        <td class="py-2 text-center">
-                            <!-- FIX: Se añade el handler onclick para editar -->
-                            <button onclick="openEditModal('users', {{ user.id }})" class="text-blue-500 hover:underline">Editar</button>
-                            <!-- FIX: Se añade el handler onclick para eliminar -->
-                            <button onclick="deleteEntity('users', {{ user.id }})" class="text-red-500 hover:underline ml-2">Eliminar</button>
+                    {% for user in users %}
+                    <tr>
+                        <td><strong>#{{ user.id }}</strong></td>
+                        <td>{{ user.username }}</td>
+                        <td>
+                            <span class="badge" style="background: 
+                                {% if user.role == 'admin' %}#e74c3c
+                                {% elif user.role == 'mesero' %}#3498db
+                                {% elif user.role == 'cocina' %}#f39c12
+                                {% else %}#27ae60
+                                {% endif %}
+                            ; color: white;">
+                                {{ user.role|upper }}
+                            </span>
+                        </td>
+                        <td style="font-size: 0.9rem;">{{ user.created_at[:10] }}</td>
+                        <td style="font-size: 0.9rem; color: #95a5a6;">
+                            {{ user.last_login[:10] if user.last_login else 'Nunca' }}
+                        </td>
+                        <td>
+                            <button onclick="openEditModal('users', {{ user.id }})" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            {% if user.id != 1 %}
+                            <button onclick="deleteEntity('users', {{ user.id }})" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                            {% endif %}
                         </td>
                     </tr>
-                {% endfor %}
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
-        <!-- Pestaña Productos -->
-        <div class="hidden p-4 rounded-lg bg-gray-50" id="products" role="tabpanel">
-             <h2 class="text-xl font-bold">Productos</h2>
-            <table class="min-w-full bg-white mt-2">
-                <thead><tr><th class="py-2">ID</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+    </div>
+
+    <!-- TAB: PRODUCTOS -->
+    <div id="tab-productos" class="tab-content" style="display: none;">
+        <h3 style="color: #2c3e50; margin-bottom: 1.5rem;">
+            <i class="fas fa-box"></i> Gestión de Productos
+        </h3>
+        
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
                 <tbody>
-                {% for product in products %}
-                    <tr class="border-b">
-                        <td class="py-2 text-center">{{ product.id }}</td>
-                        <td class="py-2 text-center">{{ product.name }}</td>
-                        <td class="py-2 text-center">{{ product.category }}</td>
-                        <td class="py-2 text-center">${{ "%.2f"|format(product.price) }}</td>
-                        <td class="py-2 text-center">{{ product.stock if product.stock is not none else 'N/A' }}</td>
-                        <td class="py-2 text-center">
-                            <button onclick="openEditModal('products', {{ product.id }})" class="text-blue-500 hover:underline">Editar</button>
+                    {% for product in products %}
+                    <tr>
+                        <td><strong>#{{ product.id }}</strong></td>
+                        <td>{{ product.name }}</td>
+                        <td>
+                            <span class="badge" style="background: 
+                                {% if product.category == 'tacos' %}#f39c12
+                                {% elif product.category == 'bebidas' %}#3498db
+                                {% elif product.category == 'extras' %}#9b59b6
+                                {% else %}#e74c3c
+                                {% endif %}
+                            ; color: white;">
+                                {{ product.category|upper }}
+                            </span>
+                        </td>
+                        <td style="font-weight: 600; color: #27ae60;">${{ "%.2f"|format(product.price) }}</td>
+                        <td>
+                            {% if product.stock %}
+                                <span style="background: #d4edda; color: #155724; padding: 0.25rem 0.75rem; border-radius: 3px;">
+                                    {{ product.stock }}
+                                </span>
+                            {% else %}
+                                <span style="color: #95a5a6;">Sin límite</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button onclick="openEditModal('products', {{ product.id }})" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button onclick="deleteEntity('products', {{ product.id }})" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
                         </td>
                     </tr>
-                {% endfor %}
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
-        <!-- Pestaña Mesas -->
-        <div class="hidden p-4 rounded-lg bg-gray-50" id="tables" role="tabpanel">
-            <h2 class="text-xl font-bold">Mesas</h2>
-            <table class="min-w-full bg-white mt-2">
-                <thead><tr><th class="py-2">ID</th><th>Nombre</th><th>Acciones</th></tr></thead>
+    </div>
+
+    <!-- TAB: MESAS -->
+    <div id="tab-mesas" class="tab-content" style="display: none;">
+        <h3 style="color: #2c3e50; margin-bottom: 1.5rem;">
+            <i class="fas fa-chair"></i> Gestión de Mesas
+        </h3>
+        
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Capacidad</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
                 <tbody>
-                {% for table in tables %}
-                    <tr class="border-b">
-                        <td class="py-2 text-center">{{ table.id }}</td>
-                        <td class="py-2 text-center">{{ table.name }}</td>
-                        <td class="py-2 text-center">
-                            <button onclick="openEditModal('tables', {{ table.id }})" class="text-blue-500 hover:underline">Editar</button>
+                    {% for mesa in mesas %}
+                    <tr>
+                        <td><strong>#{{ mesa.id }}</strong></td>
+                        <td>{{ mesa.name }}</td>
+                        <td>{{ mesa.capacity }} personas</td>
+                        <td>
+                            <span class="badge" style="background: 
+                                {% if mesa.status == 'disponible' %}#27ae60
+                                {% elif mesa.status == 'ocupada' %}#e74c3c
+                                {% else %}#f39c12
+                                {% endif %}
+                            ; color: white;">
+                                {{ mesa.status|upper }}
+                            </span>
+                        </td>
+                        <td>
+                            <button onclick="openEditModal('tables', {{ mesa.id }})" class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-edit"></i> Editar
+                            </button>
+                            <button onclick="deleteEntity('tables', {{ mesa.id }})" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
                         </td>
                     </tr>
-                {% endfor %}
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- Modal de Edición Genérico -->
-<div id="editModal" class="fixed z-10 inset-0 overflow-y-auto hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-  <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-    <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-      <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-        <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Editar</h3>
-        <div class="mt-2">
-            <form id="editForm">
-                <input type="hidden" id="edit-entity-type" name="entity">
-                <input type="hidden" id="edit-entity-id" name="id">
-                <div id="edit-form-fields"></div>
-            </form>
+<!-- MODAL EDITAR -->
+<div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 id="modalTitle" style="margin: 0;">Editar</h3>
+            <button onclick="closeEditModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #95a5a6;">✕</button>
         </div>
-      </div>
-      <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-        <button type="button" onclick="submitEditForm()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700">Guardar</button>
-        <button type="button" onclick="closeEditModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50">Cancelar</button>
-      </div>
+
+        <form id="editForm" onsubmit="submitEditForm(event)">
+            <input type="hidden" id="entityType">
+            <input type="hidden" id="entityId">
+            <div id="formFields"></div>
+            
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary" style="flex: 1;">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+                <button type="button" onclick="closeEditModal()" class="btn btn-secondary" style="flex: 1;">
+                    Cancelar
+                </button>
+            </div>
+        </form>
     </div>
-  </div>
 </div>
 
+{% endblock %}
 
-<script src="{{ url_for('static', filename='notifications.js') }}"></script>
-<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}
+<script>
+// Tab switching
+function mostrarTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.style.borderBottomColor = 'transparent';
+        btn.style.color = '#95a5a6';
+    });
+    
+    // Show selected tab
+    document.getElementById(`tab-${tabName}`).style.display = 'block';
+    event.target.style.borderBottomColor = '#e74c3c';
+    event.target.style.color = '#e74c3c';
+}
 
-# ---------- ADMIN API ----------
-@app.route('/admin/api/<entity_type>/<int:entity_id>')
-@login_required
-@role_required('admin')
-def admin_get_entity(entity_type, entity_id):
-    db = get_db()
-    
-    if entity_type == 'users':
-        row = db.execute('SELECT * FROM users WHERE id = ?', (entity_id,)).fetchone()
-    elif entity_type == 'products':
-        row = db.execute('SELECT * FROM products WHERE id = ?', (entity_id,)).fetchone()
-    elif entity_type == 'tables':
-        row = db.execute('SELECT * FROM tables WHERE id = ?', (entity_id,)).fetchone()
-    else:
-        return jsonify({'error': 'Tipo no válido'}), 400
-    
-    if not row:
-        return jsonify({'error': 'No encontrado'}), 404
-    
-    return jsonify(dict(row))
+// Edit modal
+function openEditModal(entityType, entityId) {
+    fetch(`/admin/api/${entityType}/${entityId}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('entityType').value = entityType;
+            document.getElementById('entityId').value = entityId;
+            
+            const formFields = document.getElementById('formFields');
+            formFields.innerHTML = '';
+            
+            if (entityType === 'users') {
+                document.getElementById('modalTitle').textContent = `Editar Usuario: ${data.username}`;
+                formFields.innerHTML = `
+                    <div class="form-group">
+                        <label>Usuario</label>
+                        <input type="text" id="fieldUsername" value="${data.username}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Rol</label>
+                        <select id="fieldRole" required>
+                            <option value="admin" ${data.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="mesero" ${data.role === 'mesero' ? 'selected' : ''}>Mesero</option>
+                            <option value="cocina" ${data.role === 'cocina' ? 'selected' : ''}>Cocina</option>
+                            <option value="caja" ${data.role === 'caja' ? 'selected' : ''}>Caja</option>
+                        </select>
+                    </div>
+                `;
+            } else if (entityType === 'products') {
+                document.getElementById('modalTitle').textContent = `Editar Producto: ${data.name}`;
+                formFields.innerHTML = `
+                    <div class="form-group">
+                        <label>Nombre</label>
+                        <input type="text" id="fieldName" value="${data.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="fieldCategory" required>
+                            <option value="tacos" ${data.category === 'tacos' ? 'selected' : ''}>Tacos</option>
+                            <option value="bebidas" ${data.category === 'bebidas' ? 'selected' : ''}>Bebidas</option>
+                            <option value="extras" ${data.category === 'extras' ? 'selected' : ''}>Extras</option>
+                            <option value="postres" ${data.category === 'postres' ? 'selected' : ''}>Postres</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Precio</label>
+                        <input type="number" id="fieldPrice" value="${data.price}" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Stock</label>
+                        <input type="number" id="fieldStock" value="${data.stock || ''}" step="1">
+                    </div>
+                `;
+            } else if (entityType === 'tables') {
+                document.getElementById('modalTitle').textContent = `Editar Mesa: ${data.name}`;
+                formFields.innerHTML = `
+                    <div class="form-group">
+                        <label>Nombre</label>
+                        <input type="text" id="fieldName" value="${data.name}" required>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('editModal').style.display = 'flex';
+        });
+}
 
-@app.route('/admin/api/<entity_type>/<int:entity_id>', methods=['POST'])
-@login_required
-@role_required('admin')
-def admin_update_entity(entity_type, entity_id):
-    db = get_db()
-    data = request.get_json()
-    
-    try:
-        if entity_type == 'users':
-            db.execute('UPDATE users SET username = ?, role = ? WHERE id = ?',
-                      (data['username'], data['role'], entity_id))
-        elif entity_type == 'products':
-            db.execute('UPDATE products SET name = ?, category = ?, price = ?, stock = ? WHERE id = ?',
-                      (data['name'], data['category'], data['price'], data['stock'], entity_id))
-        elif entity_type == 'tables':
-            db.execute('UPDATE tables SET name = ? WHERE id = ?',
-                      (data['name'], entity_id))
-        else:
-            return jsonify({'error': 'Tipo no válido'}), 400
-        
-        db.commit()
-        return jsonify({'success': True, 'message': 'Actualizado correctamente'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
 
-@app.route('/admin/<entity_type>/delete/<int:entity_id>', methods=['POST'])
-@login_required
-@role_required('admin')
-def admin_delete_entity(entity_type, entity_id):
-    db = get_db()
+function submitEditForm(e) {
+    e.preventDefault();
+    const entityType = document.getElementById('entityType').value;
+    const entityId = document.getElementById('entityId').value;
     
-    try:
-        if entity_type == 'users':
-            # No permitir eliminar al único admin
-            if entity_id == 1:
-                return jsonify({'error': 'No se puede eliminar al administrador principal'}), 400
-            db.execute('DELETE FROM users WHERE id = ?', (entity_id,))
-        elif entity_type == 'products':
-            db.execute('DELETE FROM products WHERE id = ?', (entity_id,))
-        elif entity_type == 'tables':
-            db.execute('DELETE FROM tables WHERE id = ?', (entity_id,))
-        else:
-            return jsonify({'error': 'Tipo no válido'}), 400
-        
-        db.commit()
-        return jsonify({'success': True, 'message': 'Eliminado correctamente'})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    let data = {};
+    if (entityType === 'users') {
+        data = {
+            username: document.getElementById('fieldUsername').value,
+            role: document.getElementById('fieldRole').value
+        };
+    } else if (entityType === 'products') {
+        data = {
+            name: document.getElementById('fieldName').value,
+            category: document.getElementById('fieldCategory').value,
+            price: parseFloat(document.getElementById('fieldPrice').value),
+            stock: document.getElementById('fieldStock').value || null
+        };
+    } else if (entityType === 'tables') {
+        data = {
+            name: document.getElementById('fieldName').value
+        };
+    }
+    
+    fetch(`/admin/api/${entityType}/${entityId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            showToast('Actualizado correctamente', 'success');
+            closeEditModal();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(result.error || 'Error', 'error');
+        }
+    });
+}
+</script>
 {% endblock %}
