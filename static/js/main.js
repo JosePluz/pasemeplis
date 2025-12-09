@@ -1,210 +1,277 @@
-// ==========================
-// NOTIFICATIONS (TOAST)
-// ==========================
+// Toast Notifications
 function showToast(message, type = 'info', duration = 3000) {
-    let container = document.getElementById('toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        container.className = 'fixed bottom-4 right-4 z-50 space-y-2';
-        document.body.appendChild(container);
-    }
-
+    const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
-    toast.className = `relative flex items-center w-full max-w-xs p-4 text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800`;
-
+    toast.className = `toast ${type}`;
+    
     const icons = {
         success: '✓',
         error: '✕',
         warning: '⚠',
         info: 'ℹ'
     };
-
-    const icon = icons[type] || icons.info;
-
+    
     toast.innerHTML = `
-        <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-${type}-500 bg-${type}-100 rounded-lg">
-            ${icon}
-        </div>
-        <div class="ml-3 text-sm font-normal">${message}</div>
+        <span class="toast-icon">${icons[type] || icons.info}</span>
+        <span>${message}</span>
     `;
-
+    
     container.appendChild(toast);
-
+    
     setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
+        toast.style.animation = 'slideOut 0.3s ease-out forwards';
         setTimeout(() => toast.remove(), 300);
     }, duration);
 }
 
-// ==========================
-// ADMIN FUNCTIONS
-// ==========================
-function deleteEntity(entityType, entityId) {
-    if (!confirm(`¿Estás seguro de que quieres eliminar este ${entityType.slice(0, -1)}?`)) return;
+// Admin functions
+function openEditModal(entityType, entityId) {
+    fetch(`/admin/api/${entityType}/${entityId}`)
+        .then(r => r.json())
+        .then(data => {
+            console.log(data);
+            // Implementar modal según necesidad
+            alert(`Editar ${entityType} #${entityId}`);
+        })
+        .catch(err => showToast('Error: ' + err, 'error'));
+}
 
+function deleteEntity(entityType, entityId) {
+    if (!confirm(`¿Eliminar este ${entityType.slice(0, -1)}?`)) return;
+    
     fetch(`/admin/${entityType}/delete/${entityId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        method: 'POST'
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Eliminado correctamente.', 'success');
+            showToast('Eliminado correctamente', 'success');
             location.reload();
         } else {
-            showToast(data.error || 'No se pudo eliminar.', 'error');
+            showToast(data.error || 'Error', 'error');
         }
     })
-    .catch(err => {
-        showToast('Error de red al intentar eliminar.', 'error');
-    });
+    .catch(err => showToast('Error: ' + err, 'error'));
 }
 
-function openEditModal(entityType, entityId) {
-    const modal = document.getElementById('editModal');
-    const formFields = document.getElementById('edit-form-fields');
-    const entityTypeInput = document.getElementById('edit-entity-type');
-    const entityIdInput = document.getElementById('edit-entity-id');
-
-    entityTypeInput.value = entityType;
-    entityIdInput.value = entityId;
-
-    fetch(`/admin/api/${entityType}/${entityId}`)
-        .then(response => response.json())
-        .then(data => {
-            formFields.innerHTML = '';
-
-            const fields = {
-                users: [
-                    { name: 'username', label: 'Nombre de usuario', type: 'text' },
-                    { name: 'role', label: 'Rol', type: 'select', options: ['admin', 'mesero', 'cocina', 'caja'] }
-                ],
-                products: [
-                    { name: 'name', label: 'Nombre', type: 'text' },
-                    { name: 'category', label: 'Categoría', type: 'select', options: ['tacos', 'bebidas', 'extras'] },
-                    { name: 'price', label: 'Precio', type: 'number' },
-                    { name: 'stock', label: 'Stock', type: 'number' },
-                ],
-                tables: [
-                    { name: 'name', label: 'Nombre de Mesa', type: 'text' }
-                ]
-            };
-
-            fields[entityType].forEach(field => {
-                const value = data[field.name] || '';
-                let inputHtml = '';
-
-                if (field.type === 'select') {
-                    inputHtml = `<label class="block">${field.label}</label><select name="${field.name}" class="w-full p-2 border rounded">`;
-                    field.options.forEach(opt => {
-                        inputHtml += `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`;
-                    });
-                    inputHtml += '</select>';
-                } else {
-                    inputHtml = `<label class="block">${field.label}</label><input type="${field.type}" name="${field.name}" value="${value}" class="w-full p-2 border rounded">`;
-                }
-
-                formFields.innerHTML += `<div class="mb-2">${inputHtml}</div>`;
-            });
-
-            modal.classList.remove('hidden');
-        });
-}
-
-function closeEditModal() {
-    document.getElementById('editModal').classList.add('hidden');
-}
-
-function submitEditForm() {
-    const entityType = document.getElementById('edit-entity-type').value;
-    const entityId = document.getElementById('edit-entity-id').value;
-    const form = document.getElementById('editForm');
-    const formData = new FormData(form);
-    const data = {};
-    formData.forEach((value, key) => { data[key] = value; });
-
-    fetch(`/admin/api/${entityType}/${entityId}`, {
+// Mesero functions
+function enlazarCocina() {
+    const codigo = document.getElementById('codigoCocina')?.value?.toUpperCase();
+    
+    if (!codigo || codigo.length !== 6) {
+        showToast('Ingresa un código de 6 caracteres', 'warning');
+        return;
+    }
+    
+    fetch('/mesero/enlazar-cocina', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({ codigo })
     })
-    .then(res => res.json())
-    .then(result => {
-        if (result.success) {
-            showToast(result.message, 'success');
-            closeEditModal();
-            location.reload();
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`✓ Enlazado a cocina: ${data.codigo}`, 'success');
+            setTimeout(() => location.reload(), 1000);
         } else {
-            showToast(result.error, 'error');
+            showToast(data.error || 'Error', 'error');
+        }
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+function desenlazarCocina() {
+    if (!confirm('¿Desenlazarse de la cocina?')) return;
+    
+    fetch('/mesero/desenlazar-cocina', {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(() => {
+        showToast('Desenlazado', 'success');
+        setTimeout(() => location.reload(), 1000);
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+function crearNuevaOrden() {
+    fetch('/mesero/crear-orden', {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`✓ Orden #${data.order_id} creada`, 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.error || 'Error', 'error');
+        }
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+function enviarOrden(orderId) {
+    if (!confirm('¿Enviar orden a cocina?')) return;
+    
+    fetch(`/mesero/enviar-orden/${orderId}`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`✓ Orden #${orderId} enviada`, 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast('Error', 'error');
+        }
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+function cancelarOrden(orderId) {
+    if (!confirm('¿CANCELAR la orden? No se puede deshacer.')) return;
+    
+    fetch(`/mesero/cancelar-orden/${orderId}`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`✓ Orden #${orderId} cancelada`, 'warning');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast(data.error || 'Error', 'error');
+        }
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+// Cocina functions
+function cargarItems(orderId) {
+    fetch(`/api/orden/${orderId}/items`)
+        .then(r => r.json())
+        .then(items => {
+            const container = document.getElementById(`items-${orderId}`);
+            if (!container) return;
+            
+            if (items.length === 0) {
+                container.innerHTML = '<p>Sin items</p>';
+                return;
+            }
+            
+            let html = '<ul style="list-style: none; padding: 0;">';
+            let total = 0;
+            items.forEach(item => {
+                const subtotal = item.qty * item.unit_price;
+                html += `
+                    <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                        <strong>${item.qty}x ${item.producto}</strong>
+                        ${item.notes ? `<br><em style="color: #999;">${item.notes}</em>` : ''}
+                        <br><span style="color: #27ae60; font-weight: 600;">$${subtotal.toFixed(2)}</span>
+                    </li>
+                `;
+                total += subtotal;
+            });
+            html += `<li style="padding: 0.75rem 0; border-top: 2px solid #333; margin-top: 0.5rem; font-weight: 700;">Total: $${total.toFixed(2)}</li>`;
+            html += '</ul>';
+            container.innerHTML = html;
+        });
+}
+
+function marcarServido(orderId) {
+    if (!confirm('¿Marcar como servida?')) return;
+    
+    fetch(`/api/orden/${orderId}/servir`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`✓ Orden #${orderId} servida`, 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast('Error', 'error');
+        }
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+// Caja functions
+function enlazarCajaCocina() {
+    const codigo = document.getElementById('codigoCocina')?.value?.toUpperCase();
+    
+    if (!codigo || codigo.length !== 6) {
+        showToast('Ingresa un código de 6 caracteres', 'warning');
+        return;
+    }
+    
+    fetch('/caja/enlazar-cocina', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`✓ Enlazado: ${data.codigo}`, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.error || 'Error', 'error');
+        }
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+function desenlazarCajaCocina() {
+    if (!confirm('¿Desenlazarse?')) return;
+    
+    fetch('/caja/desenlazar-cocina', {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(() => {
+        showToast('Desenlazado', 'success');
+        setTimeout(() => location.reload(), 1000);
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+function cerrarOrden(orderId) {
+    if (!confirm('¿Cerrar orden y confirmar pago?')) return;
+    
+    fetch(`/caja/cerrar/${orderId}`, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`✓ Orden #${orderId} cerrada`, 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showToast('Error', 'error');
+        }
+    })
+    .catch(err => showToast('Error: ' + err, 'error'));
+}
+
+// Auto-load items on page load
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[id^="items-"]').forEach(el => {
+        const orderId = el.id.split('-')[1];
+        if (orderId) {
+            cargarItems(orderId);
         }
     });
-}
+});
 
-// ==========================
-// UTILS
-// ==========================
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('es-MX', {
-        style: 'currency',
-        currency: 'MXN'
-    }).format(amount);
-}
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('es-MX', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    }).format(date);
-}
-
-function validateCodigoCocina(codigo) {
-    return /^[A-Z0-9]{6}$/.test(codigo);
-}
-
-function confirmAction(message) {
-    return confirm(message);
-}
-
-async function fetchWithErrorHandling(url, options = {}) {
-    try {
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Error en la solicitud');
+// Allow Enter key in code input
+document.getElementById('codigoCocina')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        if (this.closest('.mesero-section')) {
+            enlazarCocina();
+        } else {
+            enlazarCajaCocina();
         }
-
-        return { success: true, data };
-    } catch (error) {
-        console.error('Fetch error:', error);
-        showToast(error.message || 'Error de red', 'error');
-        return { success: false, error: error.message };
     }
-}
-
-// ==========================
-// GLOBAL ACCESS
-// ==========================
-window.showToast = showToast;
-window.deleteEntity = deleteEntity;
-window.openEditModal = openEditModal;
-window.closeEditModal = closeEditModal;
-window.submitEditForm = submitEditForm;
-window.formatCurrency = formatCurrency;
-window.formatDate = formatDate;
-window.validateCodigoCocina = validateCodigoCocina;
-window.confirmAction = confirmAction;
-window.fetchWithErrorHandling = fetchWithErrorHandling;
+});
