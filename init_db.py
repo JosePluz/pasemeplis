@@ -10,7 +10,7 @@ def init_database():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Tabla usuarios con campos adicionales
+    # Tabla usuarios
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,19 +36,7 @@ def init_database():
         )
     ''')
 
-    # Tabla enlace mesero-cocina
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS mesero_cocina (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            mesero_id INTEGER UNIQUE NOT NULL,
-            codigo_cocina TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (mesero_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (codigo_cocina) REFERENCES cocinas(codigo) ON DELETE CASCADE
-        )
-    ''')
-
-    # Tabla mesas con estado
+    # Tabla mesas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS tables (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +47,7 @@ def init_database():
         )
     ''')
 
-    # Tabla productos mejorada
+    # Tabla productos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,7 +61,7 @@ def init_database():
         )
     ''')
 
-    # Tabla órdenes mejorada
+    # Tabla órdenes
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,20 +93,7 @@ def init_database():
         )
     ''')
 
-    # Tabla relación mesa-orden
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS table_orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            table_id INTEGER NOT NULL,
-            order_id INTEGER NOT NULL,
-            status TEXT CHECK(status IN ('abierta', 'pendiente', 'servida', 'cerrada')) DEFAULT 'abierta',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (table_id) REFERENCES tables(id),
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-        )
-    ''')
-
-    # Tabla de auditoría mejorada
+    # Tabla de auditoría
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,13 +107,16 @@ def init_database():
         )
     ''')
 
-    # Índices para mejor rendimiento
+    # ===== ÍNDICES PARA PERFORMANCE =====
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_orders_mesero ON orders(mesero_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_orders_cocina ON orders(codigo_cocina)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_usuario ON audit_log(usuario)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_cocinas_codigo ON cocinas(codigo)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)')
 
     # Usuario admin por defecto
     admin_exists = cursor.execute('SELECT id FROM users WHERE username = ?', ('admin',)).fetchone()
@@ -150,7 +128,7 @@ def init_database():
         ''', ('admin', hashed_password, 'admin', datetime.now().isoformat()))
         print('✅ Usuario admin creado: admin / admin123')
 
-    # Insertar mesas predeterminadas
+    # Mesas predeterminadas
     for i in range(1, 16):
         cursor.execute('''
             INSERT OR IGNORE INTO tables (id, name, capacity, status) 
@@ -159,30 +137,23 @@ def init_database():
 
     # Productos predeterminados
     productos = [
-        # Tacos
-        ("Taco al Pastor", "tacos", 15.00, 100, "Carne de cerdo marinada con especias"),
+        ("Taco al Pastor", "tacos", 15.00, 100, "Carne de cerdo marinada"),
         ("Taco de Asada", "tacos", 18.00, 100, "Carne de res asada"),
         ("Taco de Chorizo", "tacos", 15.00, 100, "Chorizo artesanal"),
         ("Taco de Suadero", "tacos", 16.00, 100, "Suadero de res"),
         ("Taco de Carnitas", "tacos", 17.00, 100, "Carnitas estilo Michoacán"),
         ("Taco de Pollo", "tacos", 14.00, 100, "Pollo marinado"),
-        
-        # Bebidas
         ("Refresco 600ml", "bebidas", 20.00, 50, "Coca-Cola, Sprite, Fanta"),
         ("Agua de Horchata", "bebidas", 15.00, 50, "Agua fresca de horchata"),
         ("Agua de Jamaica", "bebidas", 15.00, 50, "Agua fresca de jamaica"),
         ("Agua de Limón", "bebidas", 15.00, 50, "Agua fresca de limón"),
         ("Cerveza", "bebidas", 35.00, 50, "Cerveza nacional"),
         ("Agua Natural", "bebidas", 12.00, 50, "Agua embotellada"),
-        
-        # Extras
-        ("Orden de Guacamole", "extras", 40.00, None, "Guacamole preparado al momento"),
+        ("Orden de Guacamole", "extras", 40.00, None, "Guacamole al momento"),
         ("Orden de Frijoles", "extras", 25.00, None, "Frijoles refritos"),
         ("Orden de Nopales", "extras", 30.00, None, "Nopales asados"),
         ("Limones Extra", "extras", 5.00, None, "Porción de limones"),
         ("Salsas Extra", "extras", 10.00, None, "Variedad de salsas"),
-        
-        # Postres
         ("Flan Napolitano", "postres", 35.00, 20, "Flan casero"),
         ("Churros (3 pzas)", "postres", 30.00, 30, "Churros con azúcar"),
     ]
@@ -198,6 +169,8 @@ def init_database():
     print('✅ Base de datos inicializada correctamente')
     print('✅ 15 mesas creadas')
     print('✅ 19 productos agregados')
+    print('✅ Índices de rendimiento creados')
+
 if __name__ == '__main__':
     if os.getenv('FLASK_ENV') != 'production' and os.path.exists(DB_PATH):
         print('⚠️  La base de datos ya existe. ¿Desea recrearla? (s/n)')
