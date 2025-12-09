@@ -1,6 +1,11 @@
 // Toast Notifications
 function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toast-container');
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     
@@ -22,6 +27,16 @@ function showToast(message, type = 'info', duration = 3000) {
         toast.style.animation = 'slideOut 0.3s ease-out forwards';
         setTimeout(() => toast.remove(), 300);
     }, duration);
+}
+
+// Cargar todos los items de órdenes
+function cargarTodosItems() {
+    document.querySelectorAll('[id^="items-"]').forEach(el => {
+        const orderId = el.id.split('-')[1];
+        if (orderId) {
+            cargarItems(orderId);
+        }
+    });
 }
 
 // Admin functions
