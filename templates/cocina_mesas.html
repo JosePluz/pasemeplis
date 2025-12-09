@@ -1,91 +1,115 @@
 {% extends "base.html" %}
 
-{% block title %}Registro - Taquería Pro{% endblock %}
+{% block title %}Panel Cocina - Taquería Pro{% endblock %}
 
 {% block content %}
-<div class="auth-container">
-    <div class="auth-box">
-        <div class="text-center" style="margin-bottom: 2rem;">
-            <i class="fas fa-user-plus" style="font-size: 3rem; color: #e74c3c; margin-bottom: 1rem;"></i>
-            <h2>Crear Cuenta</h2>
-            <p style="color: #95a5a6; margin-top: 0.5rem;">Únete a Taquería Pro</p>
-        </div>
+<div class="dashboard">
+    <h2>
+        <i class="fas fa-fire"></i> Panel de Cocina
+    </h2>
 
-        {% if error %}
-        <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
-            <i class="fas fa-exclamation-circle"></i>
-            {{ error }}
-        </div>
+    <!-- Código de Cocina -->
+    <div class="card" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; margin-bottom: 2rem; text-align: center;">
+        <p style="margin: 0; font-size: 0.9rem; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px;">Tu Código de Cocina</p>
+        <p style="font-size: 3rem; font-weight: 900; margin: 1rem 0; font-family: 'Courier New', monospace; letter-spacing: 8px;">
+            {{ mi_codigo }}
+        </p>
+        <p style="margin: 0; font-size: 0.9rem; opacity: 0.9;">Comparte este código con los meseros</p>
+    </div>
+
+    <!-- Órdenes Pendientes -->
+    <div>
+        <h3 style="color: #2c3e50; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i class="fas fa-clipboard-list"></i>
+            Órdenes Pendientes
+            <span class="badge" style="background: #e74c3c; color: white; margin-left: auto;">
+                {{ ordenes|length }}
+            </span>
+        </h3>
+
+        {% if ordenes %}
+            <div class="grid">
+                {% for orden in ordenes %}
+                    <div class="card" style="border-top: 4px solid #f39c12; position: relative; overflow: hidden;">
+                        <!-- Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid #f39c12;">
+                            <div>
+                                <p style="font-weight: 900; font-size: 1.5rem; color: #e74c3c; margin: 0;">
+                                    #{{ orden.id }}
+                                </p>
+                                <p style="color: #95a5a6; margin: 0.25rem 0 0 0; font-size: 0.85rem;">
+                                    <i class="fas fa-clock"></i> {{ orden.created_at[:16] }}
+                                </p>
+                            </div>
+                            <span style="background: #f39c12; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">
+                                PENDIENTE
+                            </span>
+                        </div>
+
+                        <!-- Mesero -->
+                        <p style="color: #2c3e50; margin: 0 0 1rem 0; font-size: 0.9rem;">
+                            <i class="fas fa-user"></i>
+                            <strong>Mesero:</strong> {{ orden.mesero or 'Sin asignar' }}
+                        </p>
+
+                        <!-- Items -->
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; max-height: 300px; overflow-y: auto;">
+                            <p style="color: #2c3e50; font-weight: 600; margin: 0 0 0.75rem 0; font-size: 0.9rem;">
+                                <i class="fas fa-list"></i> Items:
+                            </p>
+                            <ul id="items-{{ orden.id }}" style="list-style: none; padding: 0; margin: 0;">
+                                <li style="color: #95a5a6; font-style: italic; padding: 0.5rem;">
+                                    Cargando items...
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Botón Marcar Servido -->
+                        <button onclick="marcarServido({{ orden.id }})" class="btn btn-success btn-block" style="width: 100%;">
+                            <i class="fas fa-check-circle"></i> Marcar Como Servido
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Auto-refresh info -->
+            <div style="text-align: center; margin-top: 2rem; padding: 1rem; background: #d1ecf1; border-radius: 6px; color: #0c5460;">
+                <i class="fas fa-sync-alt"></i> La página se actualiza automáticamente cada 5 segundos
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 4rem 2rem; background: linear-gradient(135deg, #f8f9fa, #ecf0f1); border-radius: 6px; border: 2px dashed #bdc3c7;">
+                <i class="fas fa-inbox" style="font-size: 4rem; color: #bdc3c7; margin-bottom: 1rem;"></i>
+                <p style="color: #2c3e50; margin: 0; font-weight: 700; font-size: 1.1rem;">
+                    ✓ Sin órdenes pendientes
+                </p>
+                <p style="color: #95a5a6; margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+                    Esperando que los meseros envíen órdenes...
+                </p>
+            </div>
         {% endif %}
-
-        {% if success %}
-        <div class="alert alert-success" style="margin-bottom: 1.5rem;">
-            <i class="fas fa-check-circle"></i>
-            {{ success }}
-        </div>
-        {% endif %}
-
-        <form method="POST" action="{{ url_for('register') }}">
-            <div class="form-group">
-                <label for="username">
-                    <i class="fas fa-user"></i> Usuario
-                </label>
-                <input 
-                    type="text" 
-                    id="username" 
-                    name="username" 
-                    placeholder="tu_usuario"
-                    required 
-                    autofocus
-                >
-            </div>
-
-            <div class="form-group">
-                <label for="password">
-                    <i class="fas fa-lock"></i> Contraseña
-                </label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    placeholder="••••••••"
-                    required
-                >
-            </div>
-
-            <div class="form-group">
-                <label for="role">
-                    <i class="fas fa-briefcase"></i> Rol
-                </label>
-                <select id="role" name="role" required>
-                    <option value="">Selecciona tu rol...</option>
-                    <option value="mesero">👨‍💼 Mesero</option>
-                    <option value="cocina">👨‍🍳 Cocina</option>
-                    <option value="caja">💰 Caja</option>
-                </select>
-            </div>
-
-            <button type="submit" class="btn btn-primary btn-block btn-lg">
-                <i class="fas fa-user-check"></i> Registrarse
-            </button>
-        </form>
-
-        <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #ecf0f1; padding-top: 1.5rem;">
-            <p style="color: #95a5a6; margin: 0;">
-                ¿Ya tienes cuenta? 
-                <a href="{{ url_for('login') }}" style="color: #e74c3c; font-weight: 600;">Inicia sesión aquí</a>
-            </p>
-        </div>
-
-        <div class="demo-info">
-            <i class="fas fa-lightbulb" style="color: #f39c12; margin-right: 0.5rem;"></i>
-            <strong>Roles disponibles:</strong>
-            <ul style="margin: 0.75rem 0 0 0; padding-left: 1.5rem; font-size: 0.9rem;">
-                <li><strong>Mesero:</strong> Crea órdenes y gestiona mesas</li>
-                <li><strong>Cocina:</strong> Recibe y prepara órdenes</li>
-                <li><strong>Caja:</strong> Cierra órdenes y procesa pagos</li>
-            </ul>
-        </div>
     </div>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cargar items para cada orden
+function cargarTodosItems() {
+    document.querySelectorAll('[id^="items-"]').forEach(el => {
+        const orderId = el.id.split('-')[1];
+        if (orderId) {
+            cargarItems(orderId);
+        }
+    });
+}
+
+// Auto-refresh cada 5 segundos
+setInterval(() => {
+    cargarTodosItems();
+}, 5000);
+
+// Cargar al abrir la página
+document.addEventListener('DOMContentLoaded', cargarTodosItems);
+</script>
 {% endblock %}
