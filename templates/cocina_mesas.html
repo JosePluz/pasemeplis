@@ -1,47 +1,91 @@
 {% extends "base.html" %}
-{% block title %}Cocina{% endblock %}
-{% block content %}
-<h2>👨‍🍳 Panel de Cocina</h2>
-<div class="alert alert-info">Tu código: <strong>{{ mi_codigo }}</strong></div>
 
-<div class="row" id="orders">
-  {% for o in ordenes %}
-  <div class="col-md-4 mb-3">
-    <div class="card">
-      <div class="card-header">
-        Orden #{{ o.id }} - {{ o.mesa or 'Sin mesa' }}
-      </div>
-      <div class="card-body">
-        <ul class="list-unstyled" id="items-{{ o.id }}">
-          <li class="text-muted">Cargando...</li>
-        </ul>
-        <button class="btn btn-success btn-sm" onclick="servir({{ o.id }})">Marcar como servida</button>
-      </div>
+{% block title %}Registro - Taquería Pro{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-box">
+        <div class="text-center" style="margin-bottom: 2rem;">
+            <i class="fas fa-user-plus" style="font-size: 3rem; color: #e74c3c; margin-bottom: 1rem;"></i>
+            <h2>Crear Cuenta</h2>
+            <p style="color: #95a5a6; margin-top: 0.5rem;">Únete a Taquería Pro</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if success %}
+        <div class="alert alert-success" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-check-circle"></i>
+            {{ success }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('register') }}">
+            <div class="form-group">
+                <label for="username">
+                    <i class="fas fa-user"></i> Usuario
+                </label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    placeholder="tu_usuario"
+                    required 
+                    autofocus
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">
+                    <i class="fas fa-lock"></i> Contraseña
+                </label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="••••••••"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="role">
+                    <i class="fas fa-briefcase"></i> Rol
+                </label>
+                <select id="role" name="role" required>
+                    <option value="">Selecciona tu rol...</option>
+                    <option value="mesero">👨‍💼 Mesero</option>
+                    <option value="cocina">👨‍🍳 Cocina</option>
+                    <option value="caja">💰 Caja</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <i class="fas fa-user-check"></i> Registrarse
+            </button>
+        </form>
+
+        <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #ecf0f1; padding-top: 1.5rem;">
+            <p style="color: #95a5a6; margin: 0;">
+                ¿Ya tienes cuenta? 
+                <a href="{{ url_for('login') }}" style="color: #e74c3c; font-weight: 600;">Inicia sesión aquí</a>
+            </p>
+        </div>
+
+        <div class="demo-info">
+            <i class="fas fa-lightbulb" style="color: #f39c12; margin-right: 0.5rem;"></i>
+            <strong>Roles disponibles:</strong>
+            <ul style="margin: 0.75rem 0 0 0; padding-left: 1.5rem; font-size: 0.9rem;">
+                <li><strong>Mesero:</strong> Crea órdenes y gestiona mesas</li>
+                <li><strong>Cocina:</strong> Recibe y prepara órdenes</li>
+                <li><strong>Caja:</strong> Cierra órdenes y procesa pagos</li>
+            </ul>
+        </div>
     </div>
-  </div>
-  {% else %}
-  <p class="text-muted">No hay órdenes pendientes.</p>
-  {% endfor %}
 </div>
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
-{% endblock %}
-{% block scripts %}
-<script>
-function cargarItems(orderId){
-  fetch(`/api/orden/${orderId}/items`)
-    .then(res => res.json())
-    .then(data => {
-      const ul = document.getElementById(`items-${orderId}`);
-      ul.innerHTML = data.map(i => `<li><strong>${i.qty}x</strong> ${i.producto} ${i.notas ? '- ' + i.notas : ''}</li>`).join('');
-    });
-}
-function servir(orderId){
-  fetch(`/api/orden/${orderId}/servir`, {method: 'POST'})
-    .then(() => location.reload());
-}
-document.querySelectorAll('[id^="items-"]').forEach(el => {
-  const orderId = el.id.split('-')[1];
-  cargarItems(orderId);
-});
-</script>
 {% endblock %}
