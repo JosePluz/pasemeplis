@@ -1,38 +1,84 @@
 {% extends "base.html" %}
 
-{% block title %}Login - Taquería Web Lite{% endblock %}
+{% block title %}Login - Taquería Pro{% endblock %}
 
 {% block content %}
 <div class="auth-container">
     <div class="auth-box">
-        <h2>Iniciar Sesión</h2>
-        
+        <div class="text-center" style="margin-bottom: 2rem;">
+            <i class="fas fa-utensils" style="font-size: 3rem; color: #e74c3c; margin-bottom: 1rem;"></i>
+            <h2>Taquería Pro</h2>
+            <p style="color: #95a5a6; margin-top: 0.5rem;">Sistema de Gestión</p>
+        </div>
+
         {% if error %}
-        <div class="error-message">{{ error }}</div>
+        <div class="alert alert-danger" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ error }}
+        </div>
         {% endif %}
-        
+
         <form method="POST" action="{{ url_for('login') }}">
             <div class="form-group">
-                <label for="username">Usuario</label>
-                <input type="text" id="username" name="username" required autofocus>
+                <label for="username">
+                    <i class="fas fa-user"></i> Usuario
+                </label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    placeholder="admin"
+                    required 
+                    autofocus
+                >
             </div>
-            
+
             <div class="form-group">
-                <label for="password">Contraseña</label>
-                <input type="password" id="password" name="password" required>
+                <label for="password">
+                    <i class="fas fa-lock"></i> Contraseña
+                </label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="••••••••"
+                    required
+                >
             </div>
-            
-            <button type="submit" class="btn-primary">Ingresar</button>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <i class="fas fa-sign-in-alt"></i> Ingresar
+            </button>
         </form>
-        
-        <div class="auth-footer">
-            <p>¿No tienes cuenta? <a href="{{ url_for('register') }}">Regístrate aquí</a></p>
+
+        <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #ecf0f1; padding-top: 1.5rem;">
+            <p style="color: #95a5a6; margin-bottom: 1rem;">
+                ¿No tienes cuenta? 
+                <a href="{{ url_for('register') }}" style="color: #e74c3c; font-weight: 600;">Regístrate aquí</a>
+            </p>
         </div>
-        
+
         <div class="demo-info">
-            <p><strong>Usuario demo admin:</strong></p>
-            <p>Usuario: <code>admin</code> | Contraseña: <code>admin123</code></p>
+            <i class="fas fa-info-circle" style="color: #f39c12; margin-right: 0.5rem;"></i>
+            <strong>Credenciales Demo Admin:</strong>
+            <p style="margin: 0.5rem 0 0 0;">
+                Usuario: <code>admin</code>
+            </p>
+            <p style="margin: 0;">
+                Contraseña: <code>admin123</code>
+            </p>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    @keyframes slideOut {
+        to {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+    }
+</style>
 {% endblock %}
