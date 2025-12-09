@@ -4,9 +4,10 @@ from database import get_db, close_db, User, Order, Product, Table
 from utils import audit_log, generar_codigo, login_required, role_required
 import os
 from functools import wraps
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key")
+app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
 @app.before_request
 def before_request():
@@ -20,12 +21,28 @@ def close(error):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        user = User.get_by_username(username)
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        if not username or not password:
+            return render_template('login.html', error='Usuario y contraseña requeridos')
+        
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+        
         if user and check_password_hash(user['password'], password):
-            session.update({'user_id': user['id'], 'username': user['username'], 'role': user['role']})
-            audit_log(username, 'Login')
+            session.update({
+                'user_id': user['id'],
+                'username': user['username'],
+                'role': user['role']
+            })
+            
+            # Actualizar último acceso
+            db.execute('UPDATE users SET last_login = ? WHERE id = ?', 
+                      (datetime.now().isoformat(), user['id']))
+            db.commit()
+            audit_log(username, 'Login', 'Inicio de sesión exitoso')
+            
             role = user['role']
             if role == 'mesero':
                 return redirect(url_for('mesero_dashboard'))
@@ -35,7 +52,9 @@ def login():
                 return redirect(url_for('caja_dashboard'))
             elif role == 'admin':
                 return redirect(url_for('admin_dashboard'))
+        
         return render_template('login.html', error='Credenciales inválidas')
+    
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -51,19 +70,20 @@ def register():
         if role not in ['mesero', 'cocina', 'caja']:
             return render_template('register.html', error='Rol inválido')
         
-        existing_user = User.get_by_username(username)
+        db = get_db()
+        existing_user = db.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+        
         if existing_user:
             return render_template('register.html', error='El usuario ya existe')
         
-        db = get_db()
         try:
             hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
             db.execute(
-                'INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)',
-                (username, hashed_password, role, __import__('datetime').datetime.now().isoformat())
+                'INSERT INTO users (username, password, role, is_active, created_at) VALUES (?, ?, ?, ?, ?)',
+                (username, hashed_password, role, 1, datetime.now().isoformat())
             )
             db.commit()
-            audit_log(username, 'Registro')
+            audit_log(username, 'Registro', f'Nuevo usuario registrado como {role}')
             return render_template('register.html', success='Cuenta creada exitosamente. Inicia sesión ahora.')
         except Exception as e:
             return render_template('register.html', error=f'Error al registrar: {str(e)}')
@@ -72,7 +92,8 @@ def register():
 
 @app.route('/logout')
 def logout():
-    audit_log(session.get('username'), 'Logout')
+    username = session.get('username', 'Desconocido')
+    audit_log(username, 'Logout', 'Cierre de sesión')
     session.clear()
     return redirect(url_for('login'))
 
@@ -81,11 +102,19 @@ def logout():
 @login_required
 @role_required('mesero')
 def mesero_dashboard():
-    codigo = session.get('codigo_cocina')
     db = get_db()
-    orders = Order.get_by_mesero(session['user_id'])
-    mesas = Table.all()
-    return render_template('mesero_mesas.html', codigo_actual=codigo, mesas=mesas, orders=orders)
+    codigo = session.get('codigo_cocina')
+    
+    # Obtener órdenes del mesero
+    orders = db.execute('''
+        SELECT o.id, o.status, o.created_at, 
+               (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as items_count
+        FROM orders o
+        WHERE o.mesero_id = ? AND o.status != 'cerrada'
+        ORDER BY o.created_at DESC
+    ''', (session['user_id'],)).fetchall()
+    
+    return render_template('mesero.html', codigo_actual=codigo, orders=orders)
 
 @app.route('/mesero/enlazar-cocina', methods=['POST'])
 @login_required
@@ -100,21 +129,14 @@ def enlazar_cocina():
     if not cocina:
         return jsonify({'error': 'Código de cocina inválido'}), 400
     
-    db.execute('INSERT OR REPLACE INTO mesero_cocina (mesero_id, codigo_cocina) VALUES (?, ?)',
-               (session['user_id'], codigo))
-    db.commit()
-    
     session['codigo_cocina'] = codigo
-    audit_log(session['username'], f'Enlazado a cocina {codigo}')
+    audit_log(session['username'], f'Enlazado a cocina', codigo)
     return jsonify({'codigo': codigo})
 
 @app.route('/mesero/desenlazar-cocina', methods=['POST'])
 @login_required
 @role_required('mesero')
 def desenlazar_cocina():
-    db = get_db()
-    db.execute('DELETE FROM mesero_cocina WHERE mesero_id = ?', (session['user_id'],))
-    db.commit()
     session.pop('codigo_cocina', None)
     audit_log(session['username'], 'Desenlazado de cocina')
     return jsonify({'success': True})
@@ -128,15 +150,14 @@ def crear_orden():
         return jsonify({'error': 'No estás enlazado a una cocina'}), 400
     
     db = get_db()
-    from datetime import datetime
     db.execute(
         'INSERT INTO orders (mesero_id, codigo_cocina, status, created_at) VALUES (?, ?, ?, ?)',
         (session['user_id'], codigo, 'borrador', datetime.now().isoformat())
     )
     db.commit()
-    order_id = db.execute('SELECT last_insert_rowid() as id').fetchone()['id']
+    order_id = db.lastrowid
     
-    audit_log(session['username'], f'Orden {order_id} creada')
+    audit_log(session['username'], f'Orden creada', f'Orden #{order_id}')
     return jsonify({'order_id': order_id})
 
 @app.route('/mesero/agregar-item', methods=['POST'])
@@ -167,7 +188,7 @@ def enviar_orden(order_id):
     db = get_db()
     db.execute('UPDATE orders SET status = ? WHERE id = ?', ('pendiente', order_id))
     db.commit()
-    audit_log(session['username'], f'Orden {order_id} enviada a cocina')
+    audit_log(session['username'], f'Orden enviada', f'Orden #{order_id} a cocina')
     return jsonify({'success': True})
 
 @app.route('/mesero/cancelar-orden/<int:order_id>', methods=['POST'])
@@ -183,7 +204,7 @@ def cancelar_orden(order_id):
     db.execute('DELETE FROM orders WHERE id = ?', (order_id,))
     db.commit()
     
-    audit_log(session['username'], f'Orden {order_id} cancelada')
+    audit_log(session['username'], f'Orden cancelada', f'Orden #{order_id}')
     return jsonify({'success': True})
 
 # ---------- COCINA ----------
@@ -191,11 +212,20 @@ def cancelar_orden(order_id):
 @login_required
 @role_required('cocina')
 def cocina_dashboard():
+    db = get_db()
     codigo = User.get_cocina_code(session['user_id'])
     if not codigo:
         codigo = generar_codigo()
         User.save_cocina_code(session['user_id'], codigo)
-    ordenes = Order.get_pendientes_by_cocina(codigo)
+    
+    ordenes = db.execute('''
+        SELECT o.id, o.created_at, o.mesero_id, u.username as mesero
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.mesero_id
+        WHERE o.codigo_cocina = ? AND o.status = 'pendiente'
+        ORDER BY o.created_at ASC
+    ''', (codigo,)).fetchall()
+    
     return render_template('cocina_mesas.html', mi_codigo=codigo, ordenes=ordenes)
 
 @app.route('/cocina/marcar_servido/<int:order_id>', methods=['POST'])
@@ -205,7 +235,7 @@ def marcar_servido(order_id):
     db = get_db()
     db.execute('UPDATE orders SET status = ? WHERE id = ?', ('servida', order_id))
     db.commit()
-    audit_log(session['username'], f'Orden {order_id} servida')
+    audit_log(session['username'], f'Orden servida', f'Orden #{order_id}')
     return jsonify({'success': True})
 
 # ---------- CAJA ----------
@@ -213,15 +243,16 @@ def marcar_servido(order_id):
 @login_required
 @role_required('caja')
 def caja_dashboard():
-    codigo = session.get('codigo_cocina')
     db = get_db()
+    codigo = session.get('codigo_cocina')
+    ordenes = []
+    
     if codigo:
         ordenes = db.execute(
             'SELECT * FROM orders WHERE codigo_cocina = ? AND status = ? ORDER BY created_at DESC',
             (codigo, 'servida')
         ).fetchall()
-    else:
-        ordenes = []
+    
     return render_template('caja.html', orders=ordenes, codigo_actual=codigo)
 
 @app.route('/caja/enlazar-cocina', methods=['POST'])
@@ -238,7 +269,7 @@ def caja_enlazar_cocina():
         return jsonify({'error': 'Código de cocina inválido'}), 400
     
     session['codigo_cocina'] = codigo
-    audit_log(session['username'], f'Caja enlazada a cocina {codigo}')
+    audit_log(session['username'], f'Caja enlazada a cocina', codigo)
     return jsonify({'codigo': codigo})
 
 @app.route('/caja/desenlazar-cocina', methods=['POST'])
@@ -246,14 +277,20 @@ def caja_enlazar_cocina():
 @role_required('caja')
 def caja_desenlazar_cocina():
     session.pop('codigo_cocina', None)
-    audit_log(session['username'], 'Caja desenlazada de cocina')
+    audit_log(session['username'], 'Caja desenlazada')
     return jsonify({'success': True})
 
 @app.route('/caja/orden/<int:order_id>')
 @login_required
 @role_required('caja')
 def caja_orden_items(order_id):
-    items = Order.get_items(order_id)
+    db = get_db()
+    items = db.execute('''
+        SELECT oi.qty, p.name as producto, oi.unit_price, (oi.qty * oi.unit_price) as subtotal, oi.notes
+        FROM order_items oi
+        JOIN products p ON p.id = oi.product_id
+        WHERE oi.order_id = ?
+    ''', (order_id,)).fetchall()
     return jsonify([dict(item) for item in items])
 
 @app.route('/caja/cerrar/<int:order_id>', methods=['POST'])
@@ -261,11 +298,10 @@ def caja_orden_items(order_id):
 @role_required('caja')
 def caja_cerrar(order_id):
     db = get_db()
-    from datetime import datetime
     db.execute('UPDATE orders SET status = ?, closed_at = ? WHERE id = ?',
                ('cerrada', datetime.now().isoformat(), order_id))
     db.commit()
-    audit_log(session['username'], f'Orden {order_id} cerrada')
+    audit_log(session['username'], f'Orden cerrada', f'Orden #{order_id}')
     return jsonify({'success': True})
 
 # ---------- ADMIN ----------
@@ -276,8 +312,8 @@ def admin_dashboard():
     db = get_db()
     users = db.execute('SELECT * FROM users ORDER BY id').fetchall()
     products = db.execute('SELECT * FROM products ORDER BY category, name').fetchall()
-    mesas = db.execute('SELECT * FROM tables ORDER BY id').fetchall()
-    return render_template('admin.html', users=users, products=products, mesas=mesas)
+    tables = db.execute('SELECT * FROM tables ORDER BY id').fetchall()
+    return render_template('admin.html', users=users, products=products, mesas=tables)
 
 @app.route('/admin/api/<entity_type>/<int:entity_id>')
 @login_required
@@ -312,7 +348,7 @@ def admin_update_entity(entity_type, entity_id):
                       (data['username'], data['role'], entity_id))
         elif entity_type == 'products':
             db.execute('UPDATE products SET name = ?, category = ?, price = ?, stock = ? WHERE id = ?',
-                      (data['name'], data['category'], data['price'], data['stock'], entity_id))
+                      (data['name'], data['category'], data['price'], data.get('stock'), entity_id))
         elif entity_type == 'tables':
             db.execute('UPDATE tables SET name = ? WHERE id = ?',
                       (data['name'], entity_id))
@@ -351,21 +387,27 @@ def admin_delete_entity(entity_type, entity_id):
 @app.route('/api/orden/<int:order_id>/items')
 @login_required
 def api_order_items(order_id):
-    items = Order.get_items(order_id)
-    return jsonify([dict(item) for item in items])
-
-@app.route('/api/orden/<int:order_id>/servir', methods=['POST'])
-@login_required
-@role_required('cocina')
-def api_servir(order_id):
     db = get_db()
-    db.execute('UPDATE orders SET status = ? WHERE id = ?', ('servida', order_id))
-    db.commit()
-    audit_log(session['username'], f'Orden {order_id} servida')
-    return jsonify({'success': True})
+    items = db.execute('''
+        SELECT oi.qty, p.name as producto, oi.unit_price, oi.notes
+        FROM order_items oi
+        JOIN products p ON p.id = oi.product_id
+        WHERE oi.order_id = ?
+    ''', (order_id,)).fetchall()
+    return jsonify([dict(item) for item in items])
 
 @app.route('/')
 def index():
+    if 'user_id' in session:
+        role = session.get('role')
+        if role == 'mesero':
+            return redirect(url_for('mesero_dashboard'))
+        elif role == 'cocina':
+            return redirect(url_for('cocina_dashboard'))
+        elif role == 'caja':
+            return redirect(url_for('caja_dashboard'))
+        elif role == 'admin':
+            return redirect(url_for('admin_dashboard'))
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
