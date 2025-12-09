@@ -466,6 +466,17 @@ table tbody tr:hover {
     }
 }
 
+@keyframes slideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
 .toast.success { border-color: var(--success); }
 .toast.error { border-color: var(--danger); }
 .toast.warning { border-color: var(--warning); }
@@ -475,6 +486,11 @@ table tbody tr:hover {
     font-size: 1.5rem;
     font-weight: 700;
 }
+
+.toast.success .toast-icon { color: var(--success); }
+.toast.error .toast-icon { color: var(--danger); }
+.toast.warning .toast-icon { color: var(--warning); }
+.toast.info .toast-icon { color: var(--info); }
 
 /* ============= UTILITIES ============= */
 .text-center { text-align: center; }
