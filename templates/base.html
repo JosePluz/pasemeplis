@@ -1,32 +1,59 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>{% block title %}Taquería Pro{% endblock %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Taquería Pro{% endblock %}</title>
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
+    <div class="app-wrapper">
+        <!-- Header -->
+        <header class="navbar">
+            <div class="navbar-container">
+                <div class="navbar-brand">
+                    <i class="fas fa-utensils"></i>
+                    <h1>Taquería Pro</h1>
+                </div>
+                
+                {% if session.user_id %}
+                <div class="navbar-user">
+                    <div class="user-info">
+                        <span class="username">{{ session.username }}</span>
+                        <span class="role-badge role-{{ session.role }}">{{ session.role|upper }}</span>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="btn btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Salir
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </header>
 
-<header>
-  <div class="container">
-    <h1>🌮 Taquería Pro</h1>
-    <div class="user-info">
-      <span class="user-badge">
-        {{ session.username }} <span class="role-tag">{{ session.role }}</span>
-      </span>
-      <a href="{{ url_for('logout') }}" class="btn-logout">Salir</a>
+        <!-- Main Content -->
+        <main class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                            <button type="button" class="alert-close" onclick="this.parentElement.style.display='none';">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Toast Container -->
+        <div id="toast-container"></div>
     </div>
-  </div>
-</header>
 
-<main class="container">
-  {% block content %}{% endblock %}
-</main>
-
-<script src="{{ url_for('static', filename='js/utils.js') }}"></script>
-<script src="{{ url_for('static', filename='notifications.js') }}"></>
-{% block scripts %}{% endblock %}
-
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>
